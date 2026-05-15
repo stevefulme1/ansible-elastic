@@ -1,7 +1,6 @@
 """Receive Elastic alert events via webhook."""
 
 import asyncio
-import json
 import logging
 from typing import Any
 from aiohttp import web
@@ -20,7 +19,7 @@ async def main(queue: asyncio.Queue, args: dict[str, Any]) -> None:
     async def _handle(request: web.Request) -> web.Response:
         try:
             payload = await request.json()
-            event = {{"{cn}": payload}}
+            event = {{"elastic": payload}}
             await queue.put(event)
             return web.Response(status=200, text="OK")
         except Exception as exc:

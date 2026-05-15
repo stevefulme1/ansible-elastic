@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 # Copyright 2026 Steve Fulmer
 # Apache-2.0 (see LICENSE)
+# GNU General Public License v3.0+
+# (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 """Ansible module: elastic_api_key_info."""
 
@@ -19,12 +21,25 @@ version_added: "1.0.0"
 author:
     - Steve Fulmer (@stevefulme1)
 options:
-    key_id:
-        description: ID of a specific api key to retrieve.
+    host:
+        description: API host address.
         type: str
-    name:
-        description: Filter by name.
+        required: true
+    username:
+        description: Authentication username.
         type: str
+    password:
+        description: Authentication password.
+        type: str
+        no_log: true
+    api_key:
+        description: API key for authentication.
+        type: str
+        no_log: true
+    validate_certs:
+        description: Whether to validate SSL certificates.
+        type: bool
+        default: true
 """
 
 EXAMPLES = r"""

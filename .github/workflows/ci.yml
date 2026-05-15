@@ -23,7 +23,7 @@ jobs:
         run: flake8 plugins/ --max-line-length=120 --ignore=E402,W503 --exclude=__init__.py
 
   unit:
-    name: Unit Tests (Python ${{{{ matrix.python }}}})
+    name: Unit Tests (Python ${{ matrix.python }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -32,6 +32,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{{{ matrix.python }}}}
+          python-version: ${{ matrix.python }}
       - run: pip install pytest requests
       - run: pytest tests/unit/ -v

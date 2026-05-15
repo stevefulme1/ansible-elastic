@@ -7,12 +7,12 @@ class TestApiClient:
     def test_session_created(self):
         with patch("requests.Session") as mock_session:
             session = mock_session()
-            session.headers = {{}}
+            session.headers = dict()
             session.verify = True
             assert session.verify is True
 
     def test_auth_header_set(self):
-        headers = {{}}
+        headers = dict()
         headers["Authorization"] = "Bearer test-key"
         assert "Authorization" in headers
         assert headers["Authorization"] == "Bearer test-key"

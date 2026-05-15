@@ -40,6 +40,10 @@ options:
         description: Whether to validate SSL certificates.
         type: bool
         default: true
+
+    policy_name:
+        description: The policy name.
+        type: str
 """
 
 EXAMPLES = r"""

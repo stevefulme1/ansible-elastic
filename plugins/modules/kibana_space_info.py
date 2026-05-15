@@ -40,6 +40,10 @@ options:
         description: Whether to validate SSL certificates.
         type: bool
         default: true
+
+    space_id:
+        description: The space id.
+        type: str
 """
 
 EXAMPLES = r"""

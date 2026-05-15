@@ -40,6 +40,10 @@ options:
         description: Whether to validate SSL certificates.
         type: bool
         default: true
+
+    dashboard_id:
+        description: The dashboard id.
+        type: str
 """
 
 EXAMPLES = r"""

@@ -40,6 +40,10 @@ options:
         description: Whether to validate SSL certificates.
         type: bool
         default: true
+
+    key_id:
+        description: The key id.
+        type: str
 """
 
 EXAMPLES = r"""

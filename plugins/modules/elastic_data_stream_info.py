@@ -40,6 +40,10 @@ options:
         description: Whether to validate SSL certificates.
         type: bool
         default: true
+
+    stream_name:
+        description: The stream name.
+        type: str
 """
 
 EXAMPLES = r"""

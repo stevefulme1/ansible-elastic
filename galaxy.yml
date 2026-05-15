@@ -6,8 +6,6 @@ readme: README.md
 authors:
   - Steve Fulmer <sfulmer@redhat.com>
 description: Ansible collection for Elastic Stack (Elasticsearch, Kibana, Fleet) with EDA plugins
-license:
-  - Apache-2.0
 license_file: LICENSE
 tags:
   - elasticsearch

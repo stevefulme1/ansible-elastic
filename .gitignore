@@ -1,0 +1,6 @@
+*.tar.gz
+*.pyc
+__pycache__/
+.tox/
+tests/output/
+*.egg-info/

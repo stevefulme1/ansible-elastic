@@ -1,0 +1,16 @@
+---
+# tasks/main.yml for elastic_fleet_setup
+# Deploy Elastic Agent via Fleet
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - elastic_fleet_setup_host is defined
+    fail_msg: "elastic_fleet_setup_host must be defined"
+    quiet: true
+
+- name: Execute elastic fleet setup
+  ansible.builtin.debug:
+    msg: >-
+      Deploy Elastic Agent via Fleet.
+      Target: {{ elastic_fleet_setup_host }}

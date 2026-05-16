@@ -1,0 +1,14 @@
+---
+# defaults/main.yml for elastic_ilm_setup
+
+# Target host
+elastic_ilm_setup_host: ""
+
+# Authentication
+elastic_ilm_setup_username: ""
+elastic_ilm_setup_password: ""
+elastic_ilm_setup_api_key: ""
+
+# Behavior
+elastic_ilm_setup_validate_certs: true
+elastic_ilm_setup_state: present

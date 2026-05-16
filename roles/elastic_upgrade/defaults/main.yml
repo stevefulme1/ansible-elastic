@@ -1,0 +1,14 @@
+---
+# defaults/main.yml for elastic_upgrade
+
+# Target host
+elastic_upgrade_host: ""
+
+# Authentication
+elastic_upgrade_username: ""
+elastic_upgrade_password: ""
+elastic_upgrade_api_key: ""
+
+# Behavior
+elastic_upgrade_validate_certs: true
+elastic_upgrade_state: present

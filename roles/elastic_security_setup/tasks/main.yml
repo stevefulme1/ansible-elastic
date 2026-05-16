@@ -1,0 +1,16 @@
+---
+# tasks/main.yml for elastic_security_setup
+# Enable TLS, authentication, and RBAC
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - elastic_security_setup_host is defined
+    fail_msg: "elastic_security_setup_host must be defined"
+    quiet: true
+
+- name: Execute elastic security setup
+  ansible.builtin.debug:
+    msg: >-
+      Enable TLS, authentication, and RBAC.
+      Target: {{ elastic_security_setup_host }}

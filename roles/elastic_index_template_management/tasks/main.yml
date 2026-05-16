@@ -1,0 +1,16 @@
+---
+# tasks/main.yml for elastic_index_template_management
+# Manage index templates and mappings
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - elastic_index_template_management_host is defined
+    fail_msg: "elastic_index_template_management_host must be defined"
+    quiet: true
+
+- name: Execute elastic index template management
+  ansible.builtin.debug:
+    msg: >-
+      Manage index templates and mappings.
+      Target: {{ elastic_index_template_management_host }}

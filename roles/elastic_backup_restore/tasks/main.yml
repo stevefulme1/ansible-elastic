@@ -1,0 +1,16 @@
+---
+# tasks/main.yml for elastic_backup_restore
+# Configure snapshot repositories and restore
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - elastic_backup_restore_host is defined
+    fail_msg: "elastic_backup_restore_host must be defined"
+    quiet: true
+
+- name: Execute elastic backup restore
+  ansible.builtin.debug:
+    msg: >-
+      Configure snapshot repositories and restore.
+      Target: {{ elastic_backup_restore_host }}

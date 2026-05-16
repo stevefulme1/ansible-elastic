@@ -1,0 +1,27 @@
+---
+argument_specs:
+  main:
+    short_description: "Configure index lifecycle management pipeline"
+    options:
+      elastic_ilm_setup_host:
+        description: Target host address
+        type: str
+        required: true
+      elastic_ilm_setup_username:
+        description: Authentication username
+        type: str
+      elastic_ilm_setup_password:
+        description: Authentication password
+        type: str
+      elastic_ilm_setup_api_key:
+        description: API key for authentication
+        type: str
+      elastic_ilm_setup_validate_certs:
+        description: Validate SSL certificates
+        type: bool
+        default: true
+      elastic_ilm_setup_state:
+        description: Desired state
+        type: str
+        default: present
+        choices: [present, absent]

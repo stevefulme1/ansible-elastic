@@ -101,14 +101,30 @@ def main():
     resource_id = module.params.get("key_id")
 
     if state == "present":
+        existing = None
         if resource_id:
-            result = client.update("api_key", resource_id, module.params)
+            existing = client.get("api_key", resource_id)
+        elif module.params.get("name"):
+            candidates = client.list("api_key", {{"name": module.params["name"]}})
+            if candidates:
+                existing = candidates[0]
+
+        if existing:
+            if module.check_mode:
+                module.exit_json(changed=False, api_key=existing)
+            result = client.update("api_key", resource_id or existing.get("id", ""), module.params)
+            module.exit_json(changed=True, api_key=result)
         else:
             if module.check_mode:
                 module.exit_json(changed=True)
             result = client.create("api_key", module.params)
-        module.exit_json(changed=True, api_key=result)
+            module.exit_json(changed=True, api_key=result)
     else:
+        existing = None
+        if resource_id:
+            existing = client.get("api_key", resource_id)
+        if not existing:
+            module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
         client.delete("api_key", resource_id)

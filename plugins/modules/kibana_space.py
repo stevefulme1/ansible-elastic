@@ -101,14 +101,30 @@ def main():
     resource_id = module.params.get("space_id")
 
     if state == "present":
+        existing = None
         if resource_id:
-            result = client.update("space", resource_id, module.params)
+            existing = client.get("space", resource_id)
+        elif module.params.get("name"):
+            candidates = client.list("space", {{"name": module.params["name"]}})
+            if candidates:
+                existing = candidates[0]
+
+        if existing:
+            if module.check_mode:
+                module.exit_json(changed=False, space=existing)
+            result = client.update("space", resource_id or existing.get("id", ""), module.params)
+            module.exit_json(changed=True, space=result)
         else:
             if module.check_mode:
                 module.exit_json(changed=True)
             result = client.create("space", module.params)
-        module.exit_json(changed=True, space=result)
+            module.exit_json(changed=True, space=result)
     else:
+        existing = None
+        if resource_id:
+            existing = client.get("space", resource_id)
+        if not existing:
+            module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
         client.delete("space", resource_id)

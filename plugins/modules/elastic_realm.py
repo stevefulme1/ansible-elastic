@@ -104,14 +104,30 @@ def main():
     resource_id = module.params.get("realm_name")
 
     if state == "present":
+        existing = None
         if resource_id:
-            result = client.update("realm", resource_id, module.params)
+            existing = client.get("realm", resource_id)
+        elif module.params.get("name"):
+            candidates = client.list("realm", {{"name": module.params["name"]}})
+            if candidates:
+                existing = candidates[0]
+
+        if existing:
+            if module.check_mode:
+                module.exit_json(changed=False, realm=existing)
+            result = client.update("realm", resource_id or existing.get("id", ""), module.params)
+            module.exit_json(changed=True, realm=result)
         else:
             if module.check_mode:
                 module.exit_json(changed=True)
             result = client.create("realm", module.params)
-        module.exit_json(changed=True, realm=result)
+            module.exit_json(changed=True, realm=result)
     else:
+        existing = None
+        if resource_id:
+            existing = client.get("realm", resource_id)
+        if not existing:
+            module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
         client.delete("realm", resource_id)

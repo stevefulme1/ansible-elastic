@@ -104,14 +104,30 @@ def main():
     resource_id = module.params.get("role_name")
 
     if state == "present":
+        existing = None
         if resource_id:
-            result = client.update("role", resource_id, module.params)
+            existing = client.get("role", resource_id)
+        elif module.params.get("name"):
+            candidates = client.list("role", {{"name": module.params["name"]}})
+            if candidates:
+                existing = candidates[0]
+
+        if existing:
+            if module.check_mode:
+                module.exit_json(changed=False, role=existing)
+            result = client.update("role", resource_id or existing.get("id", ""), module.params)
+            module.exit_json(changed=True, role=result)
         else:
             if module.check_mode:
                 module.exit_json(changed=True)
             result = client.create("role", module.params)
-        module.exit_json(changed=True, role=result)
+            module.exit_json(changed=True, role=result)
     else:
+        existing = None
+        if resource_id:
+            existing = client.get("role", resource_id)
+        if not existing:
+            module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
         client.delete("role", resource_id)

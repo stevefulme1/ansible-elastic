@@ -104,14 +104,30 @@ def main():
     resource_id = module.params.get("transform_id")
 
     if state == "present":
+        existing = None
         if resource_id:
-            result = client.update("transform", resource_id, module.params)
+            existing = client.get("transform", resource_id)
+        elif module.params.get("name"):
+            candidates = client.list("transform", {{"name": module.params["name"]}})
+            if candidates:
+                existing = candidates[0]
+
+        if existing:
+            if module.check_mode:
+                module.exit_json(changed=False, transform=existing)
+            result = client.update("transform", resource_id or existing.get("id", ""), module.params)
+            module.exit_json(changed=True, transform=result)
         else:
             if module.check_mode:
                 module.exit_json(changed=True)
             result = client.create("transform", module.params)
-        module.exit_json(changed=True, transform=result)
+            module.exit_json(changed=True, transform=result)
     else:
+        existing = None
+        if resource_id:
+            existing = client.get("transform", resource_id)
+        if not existing:
+            module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
         client.delete("transform", resource_id)

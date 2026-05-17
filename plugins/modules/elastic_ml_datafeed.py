@@ -104,14 +104,30 @@ def main():
     resource_id = module.params.get("datafeed_id")
 
     if state == "present":
+        existing = None
         if resource_id:
-            result = client.update("ml_datafeed", resource_id, module.params)
+            existing = client.get("ml_datafeed", resource_id)
+        elif module.params.get("name"):
+            candidates = client.list("ml_datafeed", {{"name": module.params["name"]}})
+            if candidates:
+                existing = candidates[0]
+
+        if existing:
+            if module.check_mode:
+                module.exit_json(changed=False, ml_datafeed=existing)
+            result = client.update("ml_datafeed", resource_id or existing.get("id", ""), module.params)
+            module.exit_json(changed=True, ml_datafeed=result)
         else:
             if module.check_mode:
                 module.exit_json(changed=True)
             result = client.create("ml_datafeed", module.params)
-        module.exit_json(changed=True, ml_datafeed=result)
+            module.exit_json(changed=True, ml_datafeed=result)
     else:
+        existing = None
+        if resource_id:
+            existing = client.get("ml_datafeed", resource_id)
+        if not existing:
+            module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
         client.delete("ml_datafeed", resource_id)

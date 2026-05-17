@@ -104,14 +104,30 @@ def main():
     resource_id = module.params.get("job_id")
 
     if state == "present":
+        existing = None
         if resource_id:
-            result = client.update("ml_job", resource_id, module.params)
+            existing = client.get("ml_job", resource_id)
+        elif module.params.get("name"):
+            candidates = client.list("ml_job", {{"name": module.params["name"]}})
+            if candidates:
+                existing = candidates[0]
+
+        if existing:
+            if module.check_mode:
+                module.exit_json(changed=False, ml_job=existing)
+            result = client.update("ml_job", resource_id or existing.get("id", ""), module.params)
+            module.exit_json(changed=True, ml_job=result)
         else:
             if module.check_mode:
                 module.exit_json(changed=True)
             result = client.create("ml_job", module.params)
-        module.exit_json(changed=True, ml_job=result)
+            module.exit_json(changed=True, ml_job=result)
     else:
+        existing = None
+        if resource_id:
+            existing = client.get("ml_job", resource_id)
+        if not existing:
+            module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
         client.delete("ml_job", resource_id)

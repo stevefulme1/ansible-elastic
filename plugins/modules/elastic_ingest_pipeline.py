@@ -104,14 +104,30 @@ def main():
     resource_id = module.params.get("pipeline_id")
 
     if state == "present":
+        existing = None
         if resource_id:
-            result = client.update("ingest_pipeline", resource_id, module.params)
+            existing = client.get("ingest_pipeline", resource_id)
+        elif module.params.get("name"):
+            candidates = client.list("ingest_pipeline", {{"name": module.params["name"]}})
+            if candidates:
+                existing = candidates[0]
+
+        if existing:
+            if module.check_mode:
+                module.exit_json(changed=False, ingest_pipeline=existing)
+            result = client.update("ingest_pipeline", resource_id or existing.get("id", ""), module.params)
+            module.exit_json(changed=True, ingest_pipeline=result)
         else:
             if module.check_mode:
                 module.exit_json(changed=True)
             result = client.create("ingest_pipeline", module.params)
-        module.exit_json(changed=True, ingest_pipeline=result)
+            module.exit_json(changed=True, ingest_pipeline=result)
     else:
+        existing = None
+        if resource_id:
+            existing = client.get("ingest_pipeline", resource_id)
+        if not existing:
+            module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
         client.delete("ingest_pipeline", resource_id)

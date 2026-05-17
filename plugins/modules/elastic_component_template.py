@@ -104,14 +104,30 @@ def main():
     resource_id = module.params.get("template_name")
 
     if state == "present":
+        existing = None
         if resource_id:
-            result = client.update("component_template", resource_id, module.params)
+            existing = client.get("component_template", resource_id)
+        elif module.params.get("name"):
+            candidates = client.list("component_template", {{"name": module.params["name"]}})
+            if candidates:
+                existing = candidates[0]
+
+        if existing:
+            if module.check_mode:
+                module.exit_json(changed=False, component_template=existing)
+            result = client.update("component_template", resource_id or existing.get("id", ""), module.params)
+            module.exit_json(changed=True, component_template=result)
         else:
             if module.check_mode:
                 module.exit_json(changed=True)
             result = client.create("component_template", module.params)
-        module.exit_json(changed=True, component_template=result)
+            module.exit_json(changed=True, component_template=result)
     else:
+        existing = None
+        if resource_id:
+            existing = client.get("component_template", resource_id)
+        if not existing:
+            module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
         client.delete("component_template", resource_id)

@@ -104,14 +104,30 @@ def main():
     resource_id = module.params.get("index_name")
 
     if state == "present":
+        existing = None
         if resource_id:
-            result = client.update("index", resource_id, module.params)
+            existing = client.get("index", resource_id)
+        elif module.params.get("name"):
+            candidates = client.list("index", {{"name": module.params["name"]}})
+            if candidates:
+                existing = candidates[0]
+
+        if existing:
+            if module.check_mode:
+                module.exit_json(changed=False, index=existing)
+            result = client.update("index", resource_id or existing.get("id", ""), module.params)
+            module.exit_json(changed=True, index=result)
         else:
             if module.check_mode:
                 module.exit_json(changed=True)
             result = client.create("index", module.params)
-        module.exit_json(changed=True, index=result)
+            module.exit_json(changed=True, index=result)
     else:
+        existing = None
+        if resource_id:
+            existing = client.get("index", resource_id)
+        if not existing:
+            module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
         client.delete("index", resource_id)

@@ -104,14 +104,30 @@ def main():
     resource_id = module.params.get("snapshot_name")
 
     if state == "present":
+        existing = None
         if resource_id:
-            result = client.update("snapshot", resource_id, module.params)
+            existing = client.get("snapshot", resource_id)
+        elif module.params.get("name"):
+            candidates = client.list("snapshot", {{"name": module.params["name"]}})
+            if candidates:
+                existing = candidates[0]
+
+        if existing:
+            if module.check_mode:
+                module.exit_json(changed=False, snapshot=existing)
+            result = client.update("snapshot", resource_id or existing.get("id", ""), module.params)
+            module.exit_json(changed=True, snapshot=result)
         else:
             if module.check_mode:
                 module.exit_json(changed=True)
             result = client.create("snapshot", module.params)
-        module.exit_json(changed=True, snapshot=result)
+            module.exit_json(changed=True, snapshot=result)
     else:
+        existing = None
+        if resource_id:
+            existing = client.get("snapshot", resource_id)
+        if not existing:
+            module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
         client.delete("snapshot", resource_id)

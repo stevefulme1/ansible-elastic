@@ -18,8 +18,8 @@ def mock_api_client():
     """Mock API client for elastic_user."""
     client = MagicMock()
     client.get.return_value = None
-    client.create.return_value = {"username": "res-123", "username": "test-user"}
-    client.update.return_value = {"username": "res-123", "username": "test-user-updated"}
+    client.create.return_value = {"username": "test-user"}
+    client.update.return_value = {"username": "test-user-updated"}
     client.delete.return_value = None
     client.list.return_value = []
     return client
@@ -29,7 +29,6 @@ def mock_api_client():
 def existing_resource():
     """Return a dict representing an existing user."""
     return {
-        "username": "res-123",
         "username": "test-user",
         "state": "active",
     }
@@ -41,7 +40,7 @@ class TestCreateUser:
     def test_create_returns_resource(self, mock_api_client):
         """Verify create returns resource dict with expected fields."""
         result = mock_api_client.create("user", {"username": "test-user"})
-        assert result["username"] == "res-123"
+        assert result["username"] == "test-user"
         assert result["username"] == "test-user"
         mock_api_client.create.assert_called_once()
 
@@ -143,7 +142,7 @@ class TestGetUser:
         """Verify get returns resource when it exists."""
         mock_api_client.get.return_value = existing_resource
         result = mock_api_client.get("user", "res-123")
-        assert result["username"] == "res-123"
+        assert result["username"] == "test-user"
 
     def test_get_nonexistent(self, mock_api_client):
         """Verify get returns None for missing resource."""

@@ -18,8 +18,8 @@ def mock_api_client():
     """Mock API client for elastic_role."""
     client = MagicMock()
     client.get.return_value = None
-    client.create.return_value = {"role_name": "res-123", "role_name": "test-role"}
-    client.update.return_value = {"role_name": "res-123", "role_name": "test-role-updated"}
+    client.create.return_value = {"role_name": "test-role"}
+    client.update.return_value = {"role_name": "test-role-updated"}
     client.delete.return_value = None
     client.list.return_value = []
     return client
@@ -29,7 +29,6 @@ def mock_api_client():
 def existing_resource():
     """Return a dict representing an existing role."""
     return {
-        "role_name": "res-123",
         "role_name": "test-role",
         "state": "active",
     }
@@ -41,7 +40,7 @@ class TestCreateRole:
     def test_create_returns_resource(self, mock_api_client):
         """Verify create returns resource dict with expected fields."""
         result = mock_api_client.create("role", {"role_name": "test-role"})
-        assert result["role_name"] == "res-123"
+        assert result["role_name"] == "test-role"
         assert result["role_name"] == "test-role"
         mock_api_client.create.assert_called_once()
 
@@ -143,7 +142,7 @@ class TestGetRole:
         """Verify get returns resource when it exists."""
         mock_api_client.get.return_value = existing_resource
         result = mock_api_client.get("role", "res-123")
-        assert result["role_name"] == "res-123"
+        assert result["role_name"] == "test-role"
 
     def test_get_nonexistent(self, mock_api_client):
         """Verify get returns None for missing resource."""

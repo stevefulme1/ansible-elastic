@@ -18,8 +18,8 @@ def mock_api_client():
     """Mock API client for elastic_component_template."""
     client = MagicMock()
     client.get.return_value = None
-    client.create.return_value = {"template_name": "res-123", "template_name": "test-component_template"}
-    client.update.return_value = {"template_name": "res-123", "template_name": "test-component_template-updated"}
+    client.create.return_value = {"template_name": "test-component_template"}
+    client.update.return_value = {"template_name": "test-component_template-updated"}
     client.delete.return_value = None
     client.list.return_value = []
     return client
@@ -29,7 +29,6 @@ def mock_api_client():
 def existing_resource():
     """Return a dict representing an existing component_template."""
     return {
-        "template_name": "res-123",
         "template_name": "test-component_template",
         "state": "active",
     }
@@ -41,7 +40,7 @@ class TestCreateComponentTemplate:
     def test_create_returns_resource(self, mock_api_client):
         """Verify create returns resource dict with expected fields."""
         result = mock_api_client.create("component_template", {"template_name": "test-component_template"})
-        assert result["template_name"] == "res-123"
+        assert result["template_name"] == "test-component_template"
         assert result["template_name"] == "test-component_template"
         mock_api_client.create.assert_called_once()
 
@@ -143,7 +142,7 @@ class TestGetComponentTemplate:
         """Verify get returns resource when it exists."""
         mock_api_client.get.return_value = existing_resource
         result = mock_api_client.get("component_template", "res-123")
-        assert result["template_name"] == "res-123"
+        assert result["template_name"] == "test-component_template"
 
     def test_get_nonexistent(self, mock_api_client):
         """Verify get returns None for missing resource."""

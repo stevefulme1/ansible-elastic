@@ -18,8 +18,8 @@ def mock_api_client():
     """Mock API client for elastic_snapshot_repository."""
     client = MagicMock()
     client.get.return_value = None
-    client.create.return_value = {"repo_name": "res-123", "repo_name": "test-snapshot_repository"}
-    client.update.return_value = {"repo_name": "res-123", "repo_name": "test-snapshot_repository-updated"}
+    client.create.return_value = {"repo_name": "test-snapshot_repository"}
+    client.update.return_value = {"repo_name": "test-snapshot_repository-updated"}
     client.delete.return_value = None
     client.list.return_value = []
     return client
@@ -29,7 +29,6 @@ def mock_api_client():
 def existing_resource():
     """Return a dict representing an existing snapshot_repository."""
     return {
-        "repo_name": "res-123",
         "repo_name": "test-snapshot_repository",
         "state": "active",
     }
@@ -41,7 +40,7 @@ class TestCreateSnapshotRepository:
     def test_create_returns_resource(self, mock_api_client):
         """Verify create returns resource dict with expected fields."""
         result = mock_api_client.create("snapshot_repository", {"repo_name": "test-snapshot_repository"})
-        assert result["repo_name"] == "res-123"
+        assert result["repo_name"] == "test-snapshot_repository"
         assert result["repo_name"] == "test-snapshot_repository"
         mock_api_client.create.assert_called_once()
 
@@ -143,7 +142,7 @@ class TestGetSnapshotRepository:
         """Verify get returns resource when it exists."""
         mock_api_client.get.return_value = existing_resource
         result = mock_api_client.get("snapshot_repository", "res-123")
-        assert result["repo_name"] == "res-123"
+        assert result["repo_name"] == "test-snapshot_repository"
 
     def test_get_nonexistent(self, mock_api_client):
         """Verify get returns None for missing resource."""

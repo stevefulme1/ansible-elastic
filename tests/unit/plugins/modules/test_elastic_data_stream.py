@@ -18,8 +18,8 @@ def mock_api_client():
     """Mock API client for elastic_data_stream."""
     client = MagicMock()
     client.get.return_value = None
-    client.create.return_value = {"stream_name": "res-123", "stream_name": "test-data_stream"}
-    client.update.return_value = {"stream_name": "res-123", "stream_name": "test-data_stream-updated"}
+    client.create.return_value = {"stream_name": "test-data_stream"}
+    client.update.return_value = {"stream_name": "test-data_stream-updated"}
     client.delete.return_value = None
     client.list.return_value = []
     return client
@@ -29,7 +29,6 @@ def mock_api_client():
 def existing_resource():
     """Return a dict representing an existing data_stream."""
     return {
-        "stream_name": "res-123",
         "stream_name": "test-data_stream",
         "state": "active",
     }
@@ -41,7 +40,7 @@ class TestCreateDataStream:
     def test_create_returns_resource(self, mock_api_client):
         """Verify create returns resource dict with expected fields."""
         result = mock_api_client.create("data_stream", {"stream_name": "test-data_stream"})
-        assert result["stream_name"] == "res-123"
+        assert result["stream_name"] == "test-data_stream"
         assert result["stream_name"] == "test-data_stream"
         mock_api_client.create.assert_called_once()
 
@@ -143,7 +142,7 @@ class TestGetDataStream:
         """Verify get returns resource when it exists."""
         mock_api_client.get.return_value = existing_resource
         result = mock_api_client.get("data_stream", "res-123")
-        assert result["stream_name"] == "res-123"
+        assert result["stream_name"] == "test-data_stream"
 
     def test_get_nonexistent(self, mock_api_client):
         """Verify get returns None for missing resource."""

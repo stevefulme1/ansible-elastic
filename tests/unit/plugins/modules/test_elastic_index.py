@@ -18,8 +18,8 @@ def mock_api_client():
     """Mock API client for elastic_index."""
     client = MagicMock()
     client.get.return_value = None
-    client.create.return_value = {"index_name": "res-123", "index_name": "test-index"}
-    client.update.return_value = {"index_name": "res-123", "index_name": "test-index-updated"}
+    client.create.return_value = {"index_name": "test-index"}
+    client.update.return_value = {"index_name": "test-index-updated"}
     client.delete.return_value = None
     client.list.return_value = []
     return client
@@ -29,7 +29,6 @@ def mock_api_client():
 def existing_resource():
     """Return a dict representing an existing index."""
     return {
-        "index_name": "res-123",
         "index_name": "test-index",
         "state": "active",
     }
@@ -41,7 +40,7 @@ class TestCreateIndex:
     def test_create_returns_resource(self, mock_api_client):
         """Verify create returns resource dict with expected fields."""
         result = mock_api_client.create("index", {"index_name": "test-index"})
-        assert result["index_name"] == "res-123"
+        assert result["index_name"] == "test-index"
         assert result["index_name"] == "test-index"
         mock_api_client.create.assert_called_once()
 
@@ -143,7 +142,7 @@ class TestGetIndex:
         """Verify get returns resource when it exists."""
         mock_api_client.get.return_value = existing_resource
         result = mock_api_client.get("index", "res-123")
-        assert result["index_name"] == "res-123"
+        assert result["index_name"] == "test-index"
 
     def test_get_nonexistent(self, mock_api_client):
         """Verify get returns None for missing resource."""

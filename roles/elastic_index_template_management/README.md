@@ -1,0 +1,3 @@
+# elastic_index_template_management
+
+Ansible role for elastic_index_template_management.

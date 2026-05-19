@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 async def main(queue: asyncio.Queue, args: dict[str, Any]) -> None:
     """Receive Elastic webhook events and forward to the EDA rulebook."""
-    host = str(args.get("host", "0.0.0.0"))
+    host = str(args.get("host", "127.0.0.1"))
     port = int(args.get("port", 5000))
     token = args.get("token", "")
 

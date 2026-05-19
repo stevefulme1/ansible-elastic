@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.2] - 2026-05-18
+
+### Security
+- Add `no_log: true` to password and api_key fields in role argument_specs
+- Change EDA webhook host default from `0.0.0.0` to `127.0.0.1`
+- Add `secret: true` to credential options in inventory plugins
+
+
 ## [2.1.1] - 2026-05-18
 
 ### Security

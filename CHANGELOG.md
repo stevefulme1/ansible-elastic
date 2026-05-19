@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1] - 2026-05-18
+
+### Security
+- Prevent credential leak in API request bodies — connection params (host, username, password, api_key, validate_certs) are now stripped before create/update payloads are sent to the remote API
+- Add timeout=30 to all HTTP methods to prevent indefinite hangs
+- Harden .gitignore to exclude secrets, credentials, and IDE artifacts
+
 ## [2.0.0] - 2026-05-17
 
 ### Added

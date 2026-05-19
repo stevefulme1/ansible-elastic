@@ -4,3 +4,26 @@ __pycache__/
 .tox/
 tests/output/
 *.egg-info/
+
+# Secrets & credentials
+.env
+.env.*
+*.pem
+*.key
+*.crt
+*.p12
+vault_pass*
+*vault*.yml
+credentials*
+
+# Ansible artifacts
+*.retry
+collections/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log

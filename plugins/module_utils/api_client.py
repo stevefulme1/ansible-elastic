@@ -19,6 +19,11 @@ except ImportError as e:
 class ApiClient:
     """REST API client for Elastic."""
 
+    _CONNECTION_KEYS = frozenset([
+        "host", "username", "password", "api_key",
+        "validate_certs", "timeout", "state",
+    ])
+
     def __init__(self, module):
         self.module = module
         self.host = module.params["host"]
@@ -26,6 +31,10 @@ class ApiClient:
         self.session = requests.Session()
         self.session.verify = self.validate_certs
         self._authenticate()
+
+    def _filter_params(self, params):
+        """Remove connection/auth keys so credentials never reach the API body."""
+        return {k: v for k, v in params.items() if k not in self._CONNECTION_KEYS}
 
     def _authenticate(self):
         api_key = self.module.params.get("api_key")
@@ -41,14 +50,14 @@ class ApiClient:
         return f"https://{self.host}/api/v1/{endpoint}"
 
     def get(self, resource_type, resource_id):
-        resp = self.session.get(self._url(f"{resource_type}s/{resource_id}"))
+        resp = self.session.get(self._url(f"{resource_type}s/{resource_id}"), timeout=30)
         if resp.status_code == 404:
             return None
         resp.raise_for_status()
         return resp.json()
 
     def list(self, resource_type, params=None):
-        resp = self.session.get(self._url(f"{resource_type}s"), params=params or {})
+        resp = self.session.get(self._url(f"{resource_type}s"), params=params or {}, timeout=30)
         resp.raise_for_status()
         data = resp.json()
         if isinstance(data, list):
@@ -56,19 +65,19 @@ class ApiClient:
         return data.get("data", data.get("items", []))
 
     def create(self, resource_type, params):
-        resp = self.session.post(self._url(f"{resource_type}s"), json=params)
+        resp = self.session.post(self._url(f"{resource_type}s"), json=self._filter_params(params), timeout=30)
         resp.raise_for_status()
         return resp.json()
 
     def update(self, resource_type, resource_id, params):
         resp = self.session.put(
-            self._url(f"{resource_type}s/{resource_id}"), json=params
+            self._url(f"{resource_type}s/{resource_id}"), json=self._filter_params(params), timeout=30
         )
         resp.raise_for_status()
         return resp.json()
 
     def delete(self, resource_type, resource_id):
-        resp = self.session.delete(self._url(f"{resource_type}s/{resource_id}"))
+        resp = self.session.delete(self._url(f"{resource_type}s/{resource_id}"), timeout=30)
         if resp.status_code == 404:
             return
         resp.raise_for_status()

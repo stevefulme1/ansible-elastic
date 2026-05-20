@@ -1,0 +1,138 @@
+---
+# Integration tests for stevefulme1.elastic.ingest_pipeline
+# These tests verify full CRUD lifecycle with idempotency and check_mode.
+# A live API endpoint is required.
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_ingest_pipeline_params:
+      state: present
+# ============================================================
+# CREATE - check mode
+# ============================================================
+- name: Create ingest_pipeline (check mode)  # noqa: args[module]
+  stevefulme1.elastic.ingest_pipeline:
+    state: present
+  args: "{{ test_ingest_pipeline_params }}"
+  check_mode: true
+  register: create_check
+- name: Assert create in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - create_check is changed
+    fail_msg: "Create in check mode should report changed=true"
+# ============================================================
+# CREATE - real
+# ============================================================
+- name: Create ingest_pipeline  # noqa: args[module]
+  stevefulme1.elastic.ingest_pipeline:
+    state: present
+  args: "{{ test_ingest_pipeline_params }}"
+  register: create_result
+- name: Assert create reports changed
+  ansible.builtin.assert:
+    that:
+      - create_result is changed
+    fail_msg: "Create should report changed=true"
+- name: Record created resource identifier
+  ansible.builtin.set_fact:
+    created_id: "{{ create_result.id }}"
+# ============================================================
+# CREATE - idempotency
+# ============================================================
+- name: Create ingest_pipeline again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.ingest_pipeline:
+    state: present
+  args: "{{ test_ingest_pipeline_params }}"
+  register: create_idempotent
+- name: Assert create is idempotent
+  ansible.builtin.assert:
+    that:
+      - create_idempotent is not changed
+    fail_msg: "Repeated create with same params should report changed=false"
+# ============================================================
+# READ - verify created resource
+# ============================================================
+- name: Get ingest_pipeline info  # noqa: args[module]
+  stevefulme1.elastic.ingest_pipeline_info:
+    id: "{{ created_id }}"
+  register: info_result
+- name: Assert resource exists
+  ansible.builtin.assert:
+    that:
+      - info_result.ingest_pipelines | length == 1
+    fail_msg: "Created resource does not match expected values"
+# ============================================================
+# UPDATE
+# ============================================================
+- name: Update ingest_pipeline  # noqa: args[module]
+  stevefulme1.elastic.ingest_pipeline:
+    id: "{{ created_id }}"
+    description: "updated_description_value"
+    field_access_pattern: "updated_field_access_pattern_value"
+    state: present
+  register: update_result
+- name: Assert update reports changed
+  ansible.builtin.assert:
+    that:
+      - update_result is changed
+    fail_msg: "Update should report changed=true"
+# UPDATE - idempotency
+- name: Update ingest_pipeline again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.ingest_pipeline:
+    id: "{{ created_id }}"
+    description: "updated_description_value"
+    field_access_pattern: "updated_field_access_pattern_value"
+    state: present
+  register: update_idempotent
+- name: Assert update is idempotent
+  ansible.builtin.assert:
+    that:
+      - update_idempotent is not changed
+    fail_msg: "Repeated update with same params should report changed=false"
+# ============================================================
+# DELETE - check mode
+# ============================================================
+- name: Delete ingest_pipeline (check mode)  # noqa: args[module]
+  stevefulme1.elastic.ingest_pipeline:
+    id: "{{ created_id }}"
+    state: absent
+  check_mode: true
+  register: delete_check
+- name: Assert delete in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_check is changed
+    fail_msg: "Delete in check mode should report changed=true"
+- name: Verify ingest_pipeline still exists after check mode delete  # noqa: args[module]
+  stevefulme1.elastic.ingest_pipeline_info:
+    id: "{{ created_id }}"
+  register: delete_check_verify
+- name: Assert resource still exists after check mode delete
+  ansible.builtin.assert:
+    that:
+      - delete_check_verify.ingest_pipelines | length == 1
+    fail_msg: "Resource should still exist after check mode delete"
+# ============================================================
+# DELETE - real
+# ============================================================
+- name: Delete ingest_pipeline  # noqa: args[module]
+  stevefulme1.elastic.ingest_pipeline:
+    id: "{{ created_id }}"
+    state: absent
+  register: delete_result
+- name: Assert delete reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_result is changed
+    fail_msg: "Delete should report changed=true"
+# DELETE - idempotency
+- name: Delete ingest_pipeline again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.ingest_pipeline:
+    id: "{{ created_id }}"
+    state: absent
+  register: delete_idempotent
+- name: Assert delete is idempotent
+  ansible.builtin.assert:
+    that:
+      - delete_idempotent is not changed
+    fail_msg: "Repeated delete should report changed=false"

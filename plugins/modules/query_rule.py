@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -14,86 +14,59 @@ module: query_rule
 short_description: Manage query_rules
 version_added: "1.0.0"
 description:
-  - Create, update, and delete _query_rule resources.
+  - Create, update, and delete query rule resources.
   - Supports check mode and diff mode for safe operations.
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   state:
     description:
-      - Desired state of the _query_rule resource.
+      - Desired state of the query rule resource.
     type: str
     choices: ['present', 'absent']
     default: present
-
   rules:
     description:
       - >-
-        
     type: dict
-
     required: true
-
-
-
-
-
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-
-
-- name: Update a _query_rule
-  stevefulme1.elastic._query_rule:
+- name: Update a query rule
+  stevefulme1.elastic.query_rule:
     ruleset_id: "existing_id"
-
-
-
     state: present
-  # API:  
-
-
-
-- name: Delete a _query_rule
-  stevefulme1.elastic._query_rule:
+  # API:
+- name: Delete a query rule
+  stevefulme1.elastic.query_rule:
     ruleset_id: "existing_id"
     state: absent
   # API: DELETE /_query_rules/{ruleset_id}
-
 """
 
 RETURN = r"""
-
 ruleset_id:
   description: >-
-    
   returned: success
   type: str
-
-
 rule_total_count:
   description: >-
     The number of rules associated with the ruleset.
   returned: success
   type: float
-
-
 rule_criteria_types_counts:
   description: >-
     A map of criteria type (for example, exact) to the number of rules of that type. NOTE: The...
   returned: success
   type: dict
-
-
 rule_type_counts:
   description: >-
     A map of rule type (for example, pinned) to the number of rules of that type.
   returned: success
   type: dict
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -105,7 +78,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def get_current_state(client, module):
-    """Retrieve the current state of the _query_rule via GET."""
+    """Retrieve the current state of the query rule via GET."""
 
     # No single-resource GET endpoint; fall back to list + filter
     identifier = module.params.get("ruleset_id")
@@ -127,7 +100,6 @@ def get_current_state(client, module):
         return None
     except ClientError:
         return None
-
 
 
 def needs_update(current, desired):
@@ -162,7 +134,9 @@ def main():
             rules=dict(
                 type="dict",
 
+
                 required=True,
+
 
 
 
@@ -199,7 +173,6 @@ def main():
 
                     pass
 
-
             elif needs_update(current, desired):
                 # Resource exists but needs updating
                 result["changed"] = True
@@ -218,7 +191,6 @@ def main():
                     )
                     result.update(response if isinstance(response, dict) else {})
 
-
             else:
                 # Resource exists and is up-to-date
 
@@ -230,6 +202,7 @@ def main():
 
                 result["rule_type_counts"] = current.get("rule_type_counts")
 
+                pass
 
         elif state == "absent":
             if current is not None:
@@ -244,7 +217,6 @@ def main():
                         "{ruleset_id}", str(identifier)
                     )
                     client.delete(path)
-
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

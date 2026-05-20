@@ -1,7 +1,7 @@
 
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -14,13 +14,11 @@ class ModuleDocFragment:
 
     DOCUMENTATION = r"""
 options:
-
   api_key:
     description:
       - The API key used to authenticate with the elastic API.
     type: str
     required: true
-
   api_url:
     description:
       - The base URL of the elastic API.

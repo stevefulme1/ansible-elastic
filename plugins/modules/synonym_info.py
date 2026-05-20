@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -11,26 +11,23 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: synonym_info
-short_description: Retrieve information about _synonym resources
+short_description: >-
+  Retrieve information about synonym resources
 version_added: "1.0.0"
 description:
-  - Retrieve a single _synonym by its identifier, or list all _synonym resources.
+  - >-
+    Retrieve a single synonym by its identifier,
+    or list all synonym resources.
   - This module always reports C(changed=False).
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   id:
     description:
-      - The unique identifier of the _synonym to retrieve.
-      - When omitted, all _synonym resources are listed.
+      - The unique identifier of the synonym to retrieve.
+      - When omitted, all synonym resources are listed.
     type: str
     required: false
-
-
-
-
-
-
   page:
     description:
       - Page number for paginated results.
@@ -48,44 +45,34 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Get a specific _synonym
-  stevefulme1.elastic._synonym_info:
+- name: Get a specific synonym
+  stevefulme1.elastic.synonym_info:
     id: "example_id"
   register: result
-
-- name: List all _synonym resources
-  stevefulme1.elastic._synonym_info:
+- name: List all synonym resources
+  stevefulme1.elastic.synonym_info:
   register: result
-
-
-
-- name: List _synonym resources with pagination
-  stevefulme1.elastic._synonym_info:
+- name: List synonym resources with pagination
+  stevefulme1.elastic.synonym_info:
     page: 1
     page_size: 50
   register: result
 """
 
 RETURN = r"""
-_synonyms:
-  description: List of _synonym resources matching the query.
+synonyms:
+  description: List of synonym resources matching the query.
   returned: always
   type: list
   elements: dict
   contains:
-
     synonyms_set:
       description: >-
-        
       type: str
-
-
     count:
       description: >-
         Number of synonym rules that the synonym set contains
       type: float
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -97,7 +84,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def fetch_single(client, identifier):
-    """Retrieve a single _synonym by identifier."""
+    """Retrieve a single synonym by identifier."""
 
     # No single-resource GET endpoint; filter from list
     items = client.get("/_synonyms")
@@ -109,19 +96,10 @@ def fetch_single(client, identifier):
     return None
 
 
-
 def fetch_list(client, module):
-    """List _synonym resources with optional filtering and pagination."""
+    """List synonym resources with optional filtering and pagination."""
 
     params = {}
-
-
-
-
-
-
-
-
 
     page = module.params.get("page")
     page_size = module.params.get("page_size")
@@ -137,7 +115,6 @@ def fetch_list(client, module):
         return response if isinstance(response, list) else []
     else:
         return client.get_paginated("/_synonyms", params=params)
-
 
 
 def main():
@@ -167,7 +144,7 @@ def main():
 
     result = dict(
         changed=False,
-        _synonyms=[],
+        synonyms=[],
     )
 
     try:
@@ -176,9 +153,9 @@ def main():
 
         if identifier is not None:
             item = fetch_single(client, identifier)
-            result["_synonyms"] = [item] if item else []
+            result["synonyms"] = [item] if item else []
         else:
-            result["_synonyms"] = fetch_list(client, module)
+            result["synonyms"] = fetch_list(client, module)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

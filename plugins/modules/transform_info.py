@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -11,42 +11,23 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: transform_info
-short_description: Retrieve information about _transform resources
+short_description: >-
+  Retrieve information about transform resources
 version_added: "1.0.0"
 description:
-  - Retrieve a single _transform by its identifier, or list all _transform resources.
+  - >-
+    Retrieve a single transform by its identifier,
+    or list all transform resources.
   - This module always reports C(changed=False).
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   id:
     description:
-      - The unique identifier of the _transform to retrieve.
-      - When omitted, all _transform resources are listed.
+      - The unique identifier of the transform to retrieve.
+      - When omitted, all transform resources are listed.
     type: str
     required: false
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   page:
     description:
       - Page number for paginated results.
@@ -64,44 +45,33 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Get a specific _transform
-  stevefulme1.elastic._transform_info:
+- name: Get a specific transform
+  stevefulme1.elastic.transform_info:
     id: "example_id"
   register: result
-
-- name: List all _transform resources
-  stevefulme1.elastic._transform_info:
+- name: List all transform resources
+  stevefulme1.elastic.transform_info:
   register: result
-
-
-
-- name: List _transform resources with pagination
-  stevefulme1.elastic._transform_info:
+- name: List transform resources with pagination
+  stevefulme1.elastic.transform_info:
     page: 1
     page_size: 50
   register: result
 """
 
 RETURN = r"""
-_transforms:
-  description: List of _transform resources matching the query.
+transforms:
+  description: List of transform resources matching the query.
   returned: always
   type: list
   elements: dict
   contains:
-
     count:
       description: >-
-        
       type: float
-
-
     transforms:
       description: >-
-        
       type: list
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -113,7 +83,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def fetch_single(client, identifier):
-    """Retrieve a single _transform by identifier."""
+    """Retrieve a single transform by identifier."""
 
     # No single-resource GET endpoint; filter from list
     items = client.get("/_transform")
@@ -125,35 +95,10 @@ def fetch_single(client, identifier):
     return None
 
 
-
 def fetch_list(client, module):
-    """List _transform resources with optional filtering and pagination."""
+    """List transform resources with optional filtering and pagination."""
 
     params = {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     page = module.params.get("page")
     page_size = module.params.get("page_size")
@@ -169,7 +114,6 @@ def fetch_list(client, module):
         return response if isinstance(response, list) else []
     else:
         return client.get_paginated("/_transform", params=params)
-
 
 
 def main():
@@ -215,7 +159,7 @@ def main():
 
     result = dict(
         changed=False,
-        _transforms=[],
+        transforms=[],
     )
 
     try:
@@ -224,9 +168,9 @@ def main():
 
         if identifier is not None:
             item = fetch_single(client, identifier)
-            result["_transforms"] = [item] if item else []
+            result["transforms"] = [item] if item else []
         else:
-            result["_transforms"] = fetch_list(client, module)
+            result["transforms"] = fetch_list(client, module)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

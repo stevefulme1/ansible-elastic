@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -11,42 +11,23 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: index_template_info
-short_description: Retrieve information about _index_template resources
+short_description: >-
+  Retrieve information about index template resources
 version_added: "1.0.0"
 description:
-  - Retrieve a single _index_template by its identifier, or list all _index_template resources.
+  - >-
+    Retrieve a single index template by its identifier,
+    or list all index template resources.
   - This module always reports C(changed=False).
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   id:
     description:
-      - The unique identifier of the _index_template to retrieve.
-      - When omitted, all _index_template resources are listed.
+      - The unique identifier of the index template to retrieve.
+      - When omitted, all index template resources are listed.
     type: str
     required: false
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   page:
     description:
       - Page number for paginated results.
@@ -64,38 +45,30 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Get a specific _index_template
-  stevefulme1.elastic._index_template_info:
+- name: Get a specific index template
+  stevefulme1.elastic.index_template_info:
     id: "example_id"
   register: result
-
-- name: List all _index_template resources
-  stevefulme1.elastic._index_template_info:
+- name: List all index template resources
+  stevefulme1.elastic.index_template_info:
   register: result
-
-
-
-- name: List _index_template resources with pagination
-  stevefulme1.elastic._index_template_info:
+- name: List index template resources with pagination
+  stevefulme1.elastic.index_template_info:
     page: 1
     page_size: 50
   register: result
 """
 
 RETURN = r"""
-_index_templates:
-  description: List of _index_template resources matching the query.
+index_templates:
+  description: List of index template resources matching the query.
   returned: always
   type: list
   elements: dict
   contains:
-
     index_templates:
       description: >-
-        
       type: list
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -107,7 +80,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def fetch_single(client, identifier):
-    """Retrieve a single _index_template by identifier."""
+    """Retrieve a single index template by identifier."""
 
     # No single-resource GET endpoint; filter from list
     items = client.get("/_index_template")
@@ -119,35 +92,10 @@ def fetch_single(client, identifier):
     return None
 
 
-
 def fetch_list(client, module):
-    """List _index_template resources with optional filtering and pagination."""
+    """List index template resources with optional filtering and pagination."""
 
     params = {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     page = module.params.get("page")
     page_size = module.params.get("page_size")
@@ -163,7 +111,6 @@ def fetch_list(client, module):
         return response if isinstance(response, list) else []
     else:
         return client.get_paginated("/_index_template", params=params)
-
 
 
 def main():
@@ -209,7 +156,7 @@ def main():
 
     result = dict(
         changed=False,
-        _index_templates=[],
+        index_templates=[],
     )
 
     try:
@@ -218,9 +165,9 @@ def main():
 
         if identifier is not None:
             item = fetch_single(client, identifier)
-            result["_index_templates"] = [item] if item else []
+            result["index_templates"] = [item] if item else []
         else:
-            result["_index_templates"] = fetch_list(client, module)
+            result["index_templates"] = fetch_list(client, module)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

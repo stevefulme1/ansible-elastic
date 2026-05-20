@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -14,124 +14,65 @@ module: logstash_pipeline
 short_description: Manage logstash
 version_added: "1.0.0"
 description:
-  - Create, update, and delete _logstash_pipeline resources.
+  - Create, update, and delete logstash pipeline resources.
   - Supports check mode and diff mode for safe operations.
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   state:
     description:
-      - Desired state of the _logstash_pipeline resource.
+      - Desired state of the logstash pipeline resource.
     type: str
     choices: ['present', 'absent']
     default: present
-
   description:
     description:
       - >-
         A description of the pipeline. This description is not used by Elasticsearch or Logstash.
     type: str
-
     required: true
-
-
-
-
-
   last_modified:
     description:
       - >-
-        
     type: str
-
     required: true
-
-
-
-
-
   pipeline:
     description:
       - >-
         The configuration for the pipeline.
     type: str
-
     required: true
-
-
-
-
-
   pipeline_metadata:
     description:
       - >-
-        
     type: dict
-
     required: true
-
-
-
-
-
   pipeline_settings:
     description:
       - >-
-        
     type: dict
-
     required: true
-
-
-
-
-
   username:
     description:
       - >-
         The user who last updated the pipeline.
     type: str
-
     required: true
-
-
-
-
-
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-
-
-- name: Update a _logstash_pipeline
-  stevefulme1.elastic._logstash_pipeline:
+- name: Update a logstash pipeline
+  stevefulme1.elastic.logstash_pipeline:
     id: "existing_id"
-
-
-
-
-
-
-
-
-
-
-
-
-
     state: present
-  # API:  
-
-
-
-- name: Delete a _logstash_pipeline
-  stevefulme1.elastic._logstash_pipeline:
+  # API:
+- name: Delete a logstash pipeline
+  stevefulme1.elastic.logstash_pipeline:
     id: "existing_id"
     state: absent
   # API: DELETE /_logstash/pipeline/{id}
-
 """
 
 RETURN = r"""
@@ -147,7 +88,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def get_current_state(client, module):
-    """Retrieve the current state of the _logstash_pipeline via GET."""
+    """Retrieve the current state of the logstash pipeline via GET."""
 
     # No single-resource GET endpoint; fall back to list + filter
     identifier = module.params.get("id")
@@ -169,7 +110,6 @@ def get_current_state(client, module):
         return None
     except ClientError:
         return None
-
 
 
 def needs_update(current, desired):
@@ -219,7 +159,9 @@ def main():
             description=dict(
                 type="str",
 
+
                 required=True,
+
 
 
 
@@ -230,7 +172,9 @@ def main():
             last_modified=dict(
                 type="str",
 
+
                 required=True,
+
 
 
 
@@ -241,7 +185,9 @@ def main():
             pipeline=dict(
                 type="str",
 
+
                 required=True,
+
 
 
 
@@ -252,7 +198,9 @@ def main():
             pipeline_metadata=dict(
                 type="dict",
 
+
                 required=True,
+
 
 
 
@@ -263,7 +211,9 @@ def main():
             pipeline_settings=dict(
                 type="dict",
 
+
                 required=True,
+
 
 
 
@@ -274,7 +224,9 @@ def main():
             username=dict(
                 type="str",
 
+
                 required=True,
+
 
 
 
@@ -311,7 +263,6 @@ def main():
 
                     pass
 
-
             elif needs_update(current, desired):
                 # Resource exists but needs updating
                 result["changed"] = True
@@ -330,9 +281,9 @@ def main():
                     )
                     result.update(response if isinstance(response, dict) else {})
 
-
             else:
                 # Resource exists and is up-to-date
+
                 pass
 
         elif state == "absent":
@@ -348,7 +299,6 @@ def main():
                         "{id}", str(identifier)
                     )
                     client.delete(path)
-
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

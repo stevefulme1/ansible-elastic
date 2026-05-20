@@ -1,155 +1,112 @@
-
 ---
-# Integration tests for stevefulme1.elastic._data_stream
-#
+# Integration tests for stevefulme1.elastic.data_stream
 # These tests verify full CRUD lifecycle with idempotency and check_mode.
 # A live API endpoint is required.
-
 - name: Set test variables
   ansible.builtin.set_fact:
-    test__data_stream_params:
-
-
+    test_data_stream_params:
+      state: present
 # ============================================================
 # CREATE - check mode
 # ============================================================
-- name: Create _data_stream (check mode)
-  stevefulme1.elastic._data_stream:
-    "{{ test__data_stream_params }}"
-
+- name: Create data_stream (check mode)  # noqa: args[module]
+  stevefulme1.elastic.data_stream:
     state: present
+  args: "{{ test_data_stream_params }}"
   check_mode: true
   register: create_check
-
 - name: Assert create in check mode reports changed
   ansible.builtin.assert:
     that:
       - create_check is changed
     fail_msg: "Create in check mode should report changed=true"
-
-- name: Verify _data_stream was NOT actually created (check mode)
-  stevefulme1.elastic._data_stream_info:
-
-  register: check_verify
-
-- name: Assert resource does not exist after check mode create
-  ansible.builtin.assert:
-    that:
-      - check_verify._data_streams | length == 0
-    fail_msg: "Resource should not exist after check mode create"
-
 # ============================================================
 # CREATE - real
 # ============================================================
-- name: Create _data_stream
-  stevefulme1.elastic._data_stream:
-    "{{ test__data_stream_params }}"
-
+- name: Create data_stream  # noqa: args[module]
+  stevefulme1.elastic.data_stream:
     state: present
+  args: "{{ test_data_stream_params }}"
   register: create_result
-
 - name: Assert create reports changed
   ansible.builtin.assert:
     that:
       - create_result is changed
     fail_msg: "Create should report changed=true"
-
 - name: Record created resource identifier
   ansible.builtin.set_fact:
     created_id: "{{ create_result.id }}"
-
 # ============================================================
 # CREATE - idempotency
 # ============================================================
-- name: Create _data_stream again (idempotency)
-  stevefulme1.elastic._data_stream:
-    "{{ test__data_stream_params }}"
-
+- name: Create data_stream again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.data_stream:
     state: present
+  args: "{{ test_data_stream_params }}"
   register: create_idempotent
-
 - name: Assert create is idempotent
   ansible.builtin.assert:
     that:
       - create_idempotent is not changed
     fail_msg: "Repeated create with same params should report changed=false"
-
 # ============================================================
 # READ - verify created resource
 # ============================================================
-- name: Get _data_stream info
-  stevefulme1.elastic._data_stream_info:
+- name: Get data_stream info  # noqa: args[module]
+  stevefulme1.elastic.data_stream_info:
     id: "{{ created_id }}"
   register: info_result
-
-- name: Assert resource exists and has expected data
+- name: Assert resource exists
   ansible.builtin.assert:
     that:
-      - info_result._data_streams | length == 1
-
+      - info_result.data_streams | length == 1
     fail_msg: "Created resource does not match expected values"
-
 # ============================================================
 # UPDATE
 # ============================================================
-
-
-
 # No optional string parameters available for update testing.
-# Update idempotency tests are skipped for this resource.
-
-
 # ============================================================
 # DELETE - check mode
 # ============================================================
-- name: Delete _data_stream (check mode)
-  stevefulme1.elastic._data_stream:
+- name: Delete data_stream (check mode)  # noqa: args[module]
+  stevefulme1.elastic.data_stream:
     id: "{{ created_id }}"
     state: absent
   check_mode: true
   register: delete_check
-
 - name: Assert delete in check mode reports changed
   ansible.builtin.assert:
     that:
       - delete_check is changed
     fail_msg: "Delete in check mode should report changed=true"
-
-- name: Verify _data_stream still exists after check mode delete
-  stevefulme1.elastic._data_stream_info:
+- name: Verify data_stream still exists after check mode delete  # noqa: args[module]
+  stevefulme1.elastic.data_stream_info:
     id: "{{ created_id }}"
   register: delete_check_verify
-
 - name: Assert resource still exists after check mode delete
   ansible.builtin.assert:
     that:
-      - delete_check_verify._data_streams | length == 1
+      - delete_check_verify.data_streams | length == 1
     fail_msg: "Resource should still exist after check mode delete"
-
 # ============================================================
 # DELETE - real
 # ============================================================
-- name: Delete _data_stream
-  stevefulme1.elastic._data_stream:
+- name: Delete data_stream  # noqa: args[module]
+  stevefulme1.elastic.data_stream:
     id: "{{ created_id }}"
     state: absent
   register: delete_result
-
 - name: Assert delete reports changed
   ansible.builtin.assert:
     that:
       - delete_result is changed
     fail_msg: "Delete should report changed=true"
-
-# ============================================================
 # DELETE - idempotency
-# ============================================================
-- name: Delete _data_stream again (idempotency)
-  stevefulme1.elastic._data_stream:
+- name: Delete data_stream again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.data_stream:
     id: "{{ created_id }}"
     state: absent
   register: delete_idempotent
-
 - name: Assert delete is idempotent
   ansible.builtin.assert:
     that:

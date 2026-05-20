@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -14,86 +14,54 @@ module: synonym
 short_description: Manage synonyms
 version_added: "1.0.0"
 description:
-  - Create, update, and delete _synonym resources.
+  - Create, update, and delete synonym resources.
   - Supports check mode and diff mode for safe operations.
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   state:
     description:
-      - Desired state of the _synonym resource.
+      - Desired state of the synonym resource.
     type: str
     choices: ['present', 'absent']
     default: present
-
   synonyms:
     description:
       - >-
-        
     type: str
-
     required: true
-
-
-
-
-
   synonyms_set:
     description:
       - >-
-        
     type: dict
-
     required: true
-
-
-
-
-
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-
-
-- name: Update a _synonym
-  stevefulme1.elastic._synonym:
+- name: Update a synonym
+  stevefulme1.elastic.synonym:
     id: "existing_id"
-
-
-
-
-
     state: present
-  # API:  
-
-
-
-- name: Delete a _synonym
-  stevefulme1.elastic._synonym:
+  # API:
+- name: Delete a synonym
+  stevefulme1.elastic.synonym:
     id: "existing_id"
     state: absent
   # API: DELETE /_synonyms/{set_id}/{rule_id}
-
 """
 
 RETURN = r"""
-
 synonyms_set:
   description: >-
-    
   returned: success
   type: str
-
-
 count:
   description: >-
     Number of synonym rules that the synonym set contains
   returned: success
   type: float
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -105,7 +73,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def get_current_state(client, module):
-    """Retrieve the current state of the _synonym via GET."""
+    """Retrieve the current state of the synonym via GET."""
 
     # No single-resource GET endpoint; fall back to list + filter
     identifier = module.params.get("id")
@@ -127,7 +95,6 @@ def get_current_state(client, module):
         return None
     except ClientError:
         return None
-
 
 
 def needs_update(current, desired):
@@ -165,7 +132,9 @@ def main():
             synonyms=dict(
                 type="str",
 
+
                 required=True,
+
 
 
 
@@ -176,7 +145,9 @@ def main():
             synonyms_set=dict(
                 type="dict",
 
+
                 required=True,
+
 
 
 
@@ -213,7 +184,6 @@ def main():
 
                     pass
 
-
             elif needs_update(current, desired):
                 # Resource exists but needs updating
                 result["changed"] = True
@@ -232,7 +202,6 @@ def main():
                     )
                     result.update(response if isinstance(response, dict) else {})
 
-
             else:
                 # Resource exists and is up-to-date
 
@@ -240,6 +209,7 @@ def main():
 
                 result["count"] = current.get("count")
 
+                pass
 
         elif state == "absent":
             if current is not None:
@@ -254,7 +224,6 @@ def main():
                         "{id}", str(identifier)
                     )
                     client.delete(path)
-
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

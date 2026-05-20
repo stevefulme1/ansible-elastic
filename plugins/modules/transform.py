@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -14,198 +14,95 @@ module: transform
 short_description: Manage transform
 version_added: "1.0.0"
 description:
-  - Create, update, and delete _transform resources.
+  - Create, update, and delete transform resources.
   - Supports check mode and diff mode for safe operations.
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   state:
     description:
-      - Desired state of the _transform resource.
+      - Desired state of the transform resource.
     type: str
     choices: ['present', 'absent']
     default: present
-
   dest:
     description:
       - >-
-        
     type: dict
-
     required: true
-
-
-
-
-
   source:
     description:
       - >-
-        
     type: dict
-
     required: true
-
-
-
-
-
   _meta:
     description:
       - >-
-        
     type: dict
-
-
-
-
-
   description:
     description:
       - >-
         Free text description of the transform.
     type: str
-
-
-
-
-
   frequency:
     description:
       - >-
-        
     type: str
-
-
-
-
-
   latest:
     description:
       - >-
-        
     type: dict
-
-
-
-
-
   pivot:
     description:
       - >-
-        
     type: dict
-
-
-
-
-
   retention_policy:
     description:
       - >-
-        
     type: dict
-
-
-
-
-
   settings:
     description:
       - >-
         The source of the data for the transform.
     type: dict
-
-
-
-
-
   sync:
     description:
       - >-
-        
     type: dict
-
-
-
-
-
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-
-
-- name: Update a _transform
-  stevefulme1.elastic._transform:
+- name: Update a transform
+  stevefulme1.elastic.transform:
     id: "existing_id"
-
-
-
-
-
-
     _meta: "updated__meta"
-
-
-
     description: "updated_description"
-
-
-
     frequency: "updated_frequency"
-
-
-
     latest: "updated_latest"
-
-
-
     pivot: "updated_pivot"
-
-
-
     retention_policy: "updated_retention_policy"
-
-
-
     settings: "updated_settings"
-
-
-
     sync: "updated_sync"
-
-
     state: present
-  # API:  
-
-
-
-- name: Delete a _transform
-  stevefulme1.elastic._transform:
+  # API:
+- name: Delete a transform
+  stevefulme1.elastic.transform:
     id: "existing_id"
     state: absent
   # API: DELETE /_transform/{transform_id}
-
 """
 
 RETURN = r"""
-
 count:
   description: >-
-    
   returned: success
   type: float
-
-
 transforms:
   description: >-
-    
   returned: success
   type: list
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -217,7 +114,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def get_current_state(client, module):
-    """Retrieve the current state of the _transform via GET."""
+    """Retrieve the current state of the transform via GET."""
 
     # No single-resource GET endpoint; fall back to list + filter
     identifier = module.params.get("id")
@@ -239,7 +136,6 @@ def get_current_state(client, module):
         return None
     except ClientError:
         return None
-
 
 
 def needs_update(current, desired):
@@ -301,7 +197,9 @@ def main():
             dest=dict(
                 type="dict",
 
+
                 required=True,
+
 
 
 
@@ -312,7 +210,9 @@ def main():
             source=dict(
                 type="dict",
 
+
                 required=True,
+
 
 
 
@@ -327,10 +227,14 @@ def main():
 
 
 
+
+
             ),
 
             description=dict(
                 type="str",
+
+
 
 
 
@@ -345,10 +249,14 @@ def main():
 
 
 
+
+
             ),
 
             latest=dict(
                 type="dict",
+
+
 
 
 
@@ -363,10 +271,14 @@ def main():
 
 
 
+
+
             ),
 
             retention_policy=dict(
                 type="dict",
+
+
 
 
 
@@ -381,10 +293,14 @@ def main():
 
 
 
+
+
             ),
 
             sync=dict(
                 type="dict",
+
+
 
 
 
@@ -421,7 +337,6 @@ def main():
 
                     pass
 
-
             elif needs_update(current, desired):
                 # Resource exists but needs updating
                 result["changed"] = True
@@ -440,7 +355,6 @@ def main():
                     )
                     result.update(response if isinstance(response, dict) else {})
 
-
             else:
                 # Resource exists and is up-to-date
 
@@ -448,6 +362,7 @@ def main():
 
                 result["transforms"] = current.get("transforms")
 
+                pass
 
         elif state == "absent":
             if current is not None:
@@ -462,7 +377,6 @@ def main():
                         "{id}", str(identifier)
                     )
                     client.delete(path)
-
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

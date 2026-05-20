@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -14,218 +14,100 @@ module: index_template
 short_description: Manage indices
 version_added: "1.0.0"
 description:
-  - Create, update, and delete _index_template resources.
+  - Create, update, and delete index template resources.
   - Supports check mode and diff mode for safe operations.
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   state:
     description:
-      - Desired state of the _index_template resource.
+      - Desired state of the index template resource.
     type: str
     choices: ['present', 'absent']
     default: present
-
   _meta:
     description:
       - >-
-        
     type: dict
-
-
-
-
-
   allow_auto_create:
     description:
       - >-
         This setting overrides the value of the action.auto_create_index cluster setting. If set to true...
     type: bool
-
-
-
-
-
   composed_of:
     description:
       - >-
         An ordered list of component template names. Component templates are merged in the order...
     type: list
-
-
-
-
-
+    elements: dict
   data_stream:
     description:
       - >-
-        
     type: dict
-
-
-
-
-
   deprecated:
     description:
       - >-
         Marks this index template as deprecated. When creating or updating a non-deprecated index...
     type: bool
-
-
-
-
-
   ignore_missing_component_templates:
     description:
       - >-
         The configuration option ignore_missing_component_templates can be used when an index template...
     type: list
-
-
-
-
-
+    elements: dict
   index_patterns:
     description:
       - >-
-        
     type: str
-
-
-
-
-
   priority:
     description:
       - >-
         Priority to determine index template precedence when a new data stream or index is created. The...
     type: float
-
-
-
-
-
   template:
     description:
       - >-
-        
     type: dict
-
-
-
-
-
   version:
     description:
       - >-
-        
     type: float
-
-
-
-
-
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-
-- name: Create a _index_template
-  stevefulme1.elastic._index_template:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- name: Create a index template
+  stevefulme1.elastic.index_template:
     state: present
   # API: POST /_index_template/{name}
-
-
-
-- name: Update a _index_template
-  stevefulme1.elastic._index_template:
+- name: Update a index template
+  stevefulme1.elastic.index_template:
     id: "existing_id"
-
-
     _meta: "updated__meta"
-
-
-
     allow_auto_create: "updated_allow_auto_create"
-
-
-
     composed_of: "updated_composed_of"
-
-
-
     data_stream: "updated_data_stream"
-
-
-
     deprecated: "updated_deprecated"
-
-
-
     ignore_missing_component_templates: "updated_ignore_missing_component_templates"
-
-
-
     index_patterns: "updated_index_patterns"
-
-
-
     priority: "updated_priority"
-
-
-
     template: "updated_template"
-
-
-
     version: "updated_version"
-
-
     state: present
-  # API:  
-
-
-
-- name: Delete a _index_template
-  stevefulme1.elastic._index_template:
+  # API:
+- name: Delete a index template
+  stevefulme1.elastic.index_template:
     id: "existing_id"
     state: absent
   # API: DELETE /_index_template/{name}
-
 """
 
 RETURN = r"""
-
 index_templates:
   description: >-
-    
   returned: success
   type: list
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -237,7 +119,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def get_current_state(client, module):
-    """Retrieve the current state of the _index_template via GET."""
+    """Retrieve the current state of the index template via GET."""
 
     # No single-resource GET endpoint; fall back to list + filter
     identifier = module.params.get("id")
@@ -259,7 +141,6 @@ def get_current_state(client, module):
         return None
     except ClientError:
         return None
-
 
 
 def needs_update(current, desired):
@@ -325,6 +206,8 @@ def main():
 
 
 
+
+
             ),
 
             allow_auto_create=dict(
@@ -334,10 +217,16 @@ def main():
 
 
 
+
+
             ),
 
             composed_of=dict(
                 type="list",
+
+                elements="dict",
+
+
 
 
 
@@ -352,6 +241,8 @@ def main():
 
 
 
+
+
             ),
 
             deprecated=dict(
@@ -361,10 +252,16 @@ def main():
 
 
 
+
+
             ),
 
             ignore_missing_component_templates=dict(
                 type="list",
+
+                elements="dict",
+
+
 
 
 
@@ -379,10 +276,14 @@ def main():
 
 
 
+
+
             ),
 
             priority=dict(
                 type="float",
+
+
 
 
 
@@ -397,10 +298,14 @@ def main():
 
 
 
+
+
             ),
 
             version=dict(
                 type="float",
+
+
 
 
 
@@ -441,7 +346,6 @@ def main():
                     )
                     result.update(response if isinstance(response, dict) else {})
 
-
             elif needs_update(current, desired):
                 # Resource exists but needs updating
                 result["changed"] = True
@@ -460,12 +364,12 @@ def main():
                     )
                     result.update(response if isinstance(response, dict) else {})
 
-
             else:
                 # Resource exists and is up-to-date
 
                 result["index_templates"] = current.get("index_templates")
 
+                pass
 
         elif state == "absent":
             if current is not None:
@@ -480,7 +384,6 @@ def main():
                         "{id}", str(identifier)
                     )
                     client.delete(path)
-
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

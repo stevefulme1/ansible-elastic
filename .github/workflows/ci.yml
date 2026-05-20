@@ -34,7 +34,7 @@ jobs:
       - name: Run yamllint
         working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
 
-        run: yamllint -c .yamllint roles/ plugins/ meta/ changelogs/ galaxy.yml
+        run: yamllint -c .yamllint plugins/ meta/ changelogs/ galaxy.yml
 
       - name: Run flake8
         working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}

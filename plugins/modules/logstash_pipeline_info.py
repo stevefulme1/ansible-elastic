@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -11,34 +11,23 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: logstash_pipeline_info
-short_description: Retrieve information about _logstash_pipeline resources
+short_description: >-
+  Retrieve information about logstash pipeline resources
 version_added: "1.0.0"
 description:
-  - Retrieve a single _logstash_pipeline by its identifier, or list all _logstash_pipeline resources.
+  - >-
+    Retrieve a single logstash pipeline by its identifier,
+    or list all logstash pipeline resources.
   - This module always reports C(changed=False).
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   id:
     description:
-      - The unique identifier of the _logstash_pipeline to retrieve.
-      - When omitted, all _logstash_pipeline resources are listed.
+      - The unique identifier of the logstash pipeline to retrieve.
+      - When omitted, all logstash pipeline resources are listed.
     type: str
     required: false
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   page:
     description:
       - Page number for paginated results.
@@ -56,32 +45,26 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Get a specific _logstash_pipeline
-  stevefulme1.elastic._logstash_pipeline_info:
+- name: Get a specific logstash pipeline
+  stevefulme1.elastic.logstash_pipeline_info:
     id: "example_id"
   register: result
-
-- name: List all _logstash_pipeline resources
-  stevefulme1.elastic._logstash_pipeline_info:
+- name: List all logstash pipeline resources
+  stevefulme1.elastic.logstash_pipeline_info:
   register: result
-
-
-
-- name: List _logstash_pipeline resources with pagination
-  stevefulme1.elastic._logstash_pipeline_info:
+- name: List logstash pipeline resources with pagination
+  stevefulme1.elastic.logstash_pipeline_info:
     page: 1
     page_size: 50
   register: result
 """
 
 RETURN = r"""
-_logstash_pipelines:
-  description: List of _logstash_pipeline resources matching the query.
+logstash_pipelines:
+  description: List of logstash pipeline resources matching the query.
   returned: always
   type: list
   elements: dict
-  contains:
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -93,7 +76,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def fetch_single(client, identifier):
-    """Retrieve a single _logstash_pipeline by identifier."""
+    """Retrieve a single logstash pipeline by identifier."""
 
     # No single-resource GET endpoint; filter from list
     items = client.get("/_logstash/pipeline")
@@ -105,27 +88,10 @@ def fetch_single(client, identifier):
     return None
 
 
-
 def fetch_list(client, module):
-    """List _logstash_pipeline resources with optional filtering and pagination."""
+    """List logstash pipeline resources with optional filtering and pagination."""
 
     params = {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     page = module.params.get("page")
     page_size = module.params.get("page_size")
@@ -141,7 +107,6 @@ def fetch_list(client, module):
         return response if isinstance(response, list) else []
     else:
         return client.get_paginated("/_logstash/pipeline", params=params)
-
 
 
 def main():
@@ -179,7 +144,7 @@ def main():
 
     result = dict(
         changed=False,
-        _logstash_pipelines=[],
+        logstash_pipelines=[],
     )
 
     try:
@@ -188,9 +153,9 @@ def main():
 
         if identifier is not None:
             item = fetch_single(client, identifier)
-            result["_logstash_pipelines"] = [item] if item else []
+            result["logstash_pipelines"] = [item] if item else []
         else:
-            result["_logstash_pipelines"] = fetch_list(client, module)
+            result["logstash_pipelines"] = fetch_list(client, module)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

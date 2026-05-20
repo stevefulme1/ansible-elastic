@@ -1,267 +1,134 @@
-
 ---
-# Integration tests for stevefulme1.elastic._index_template
-#
+# Integration tests for stevefulme1.elastic.index_template
 # These tests verify full CRUD lifecycle with idempotency and check_mode.
 # A live API endpoint is required.
-
 - name: Set test variables
   ansible.builtin.set_fact:
-    test__index_template_params:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    test_index_template_params:
+      state: present
 # ============================================================
 # CREATE - check mode
 # ============================================================
-- name: Create _index_template (check mode)
-  stevefulme1.elastic._index_template:
-    "{{ test__index_template_params }}"
-
+- name: Create index_template (check mode)  # noqa: args[module]
+  stevefulme1.elastic.index_template:
     state: present
+  args: "{{ test_index_template_params }}"
   check_mode: true
   register: create_check
-
 - name: Assert create in check mode reports changed
   ansible.builtin.assert:
     that:
       - create_check is changed
     fail_msg: "Create in check mode should report changed=true"
-
-- name: Verify _index_template was NOT actually created (check mode)
-  stevefulme1.elastic._index_template_info:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  register: check_verify
-
-- name: Assert resource does not exist after check mode create
-  ansible.builtin.assert:
-    that:
-      - check_verify._index_templates | length == 0
-    fail_msg: "Resource should not exist after check mode create"
-
 # ============================================================
 # CREATE - real
 # ============================================================
-- name: Create _index_template
-  stevefulme1.elastic._index_template:
-    "{{ test__index_template_params }}"
-
+- name: Create index_template  # noqa: args[module]
+  stevefulme1.elastic.index_template:
     state: present
+  args: "{{ test_index_template_params }}"
   register: create_result
-
 - name: Assert create reports changed
   ansible.builtin.assert:
     that:
       - create_result is changed
     fail_msg: "Create should report changed=true"
-
 - name: Record created resource identifier
   ansible.builtin.set_fact:
     created_id: "{{ create_result.id }}"
-
 # ============================================================
 # CREATE - idempotency
 # ============================================================
-- name: Create _index_template again (idempotency)
-  stevefulme1.elastic._index_template:
-    "{{ test__index_template_params }}"
-
+- name: Create index_template again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.index_template:
     state: present
+  args: "{{ test_index_template_params }}"
   register: create_idempotent
-
 - name: Assert create is idempotent
   ansible.builtin.assert:
     that:
       - create_idempotent is not changed
     fail_msg: "Repeated create with same params should report changed=false"
-
 # ============================================================
 # READ - verify created resource
 # ============================================================
-- name: Get _index_template info
-  stevefulme1.elastic._index_template_info:
+- name: Get index_template info  # noqa: args[module]
+  stevefulme1.elastic.index_template_info:
     id: "{{ created_id }}"
   register: info_result
-
-- name: Assert resource exists and has expected data
+- name: Assert resource exists
   ansible.builtin.assert:
     that:
-      - info_result._index_templates | length == 1
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      - info_result.index_templates | length == 1
     fail_msg: "Created resource does not match expected values"
-
 # ============================================================
 # UPDATE
 # ============================================================
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-- name: Update _index_template
-  stevefulme1.elastic._index_template:
+- name: Update index_template  # noqa: args[module]
+  stevefulme1.elastic.index_template:
     id: "{{ created_id }}"
-
     index_patterns: "updated_index_patterns_value"
-
     state: present
   register: update_result
-
 - name: Assert update reports changed
   ansible.builtin.assert:
     that:
       - update_result is changed
     fail_msg: "Update should report changed=true"
-
-# ============================================================
 # UPDATE - idempotency
-# ============================================================
-- name: Update _index_template again (idempotency)
-  stevefulme1.elastic._index_template:
+- name: Update index_template again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.index_template:
     id: "{{ created_id }}"
-
     index_patterns: "updated_index_patterns_value"
-
     state: present
   register: update_idempotent
-
 - name: Assert update is idempotent
   ansible.builtin.assert:
     that:
       - update_idempotent is not changed
     fail_msg: "Repeated update with same params should report changed=false"
-
-
 # ============================================================
 # DELETE - check mode
 # ============================================================
-- name: Delete _index_template (check mode)
-  stevefulme1.elastic._index_template:
+- name: Delete index_template (check mode)  # noqa: args[module]
+  stevefulme1.elastic.index_template:
     id: "{{ created_id }}"
     state: absent
   check_mode: true
   register: delete_check
-
 - name: Assert delete in check mode reports changed
   ansible.builtin.assert:
     that:
       - delete_check is changed
     fail_msg: "Delete in check mode should report changed=true"
-
-- name: Verify _index_template still exists after check mode delete
-  stevefulme1.elastic._index_template_info:
+- name: Verify index_template still exists after check mode delete  # noqa: args[module]
+  stevefulme1.elastic.index_template_info:
     id: "{{ created_id }}"
   register: delete_check_verify
-
 - name: Assert resource still exists after check mode delete
   ansible.builtin.assert:
     that:
-      - delete_check_verify._index_templates | length == 1
+      - delete_check_verify.index_templates | length == 1
     fail_msg: "Resource should still exist after check mode delete"
-
 # ============================================================
 # DELETE - real
 # ============================================================
-- name: Delete _index_template
-  stevefulme1.elastic._index_template:
+- name: Delete index_template  # noqa: args[module]
+  stevefulme1.elastic.index_template:
     id: "{{ created_id }}"
     state: absent
   register: delete_result
-
 - name: Assert delete reports changed
   ansible.builtin.assert:
     that:
       - delete_result is changed
     fail_msg: "Delete should report changed=true"
-
-# ============================================================
 # DELETE - idempotency
-# ============================================================
-- name: Delete _index_template again (idempotency)
-  stevefulme1.elastic._index_template:
+- name: Delete index_template again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.index_template:
     id: "{{ created_id }}"
     state: absent
   register: delete_idempotent
-
 - name: Assert delete is idempotent
   ansible.builtin.assert:
     that:

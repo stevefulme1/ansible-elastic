@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -11,30 +11,23 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: component_template_info
-short_description: Retrieve information about _component_template resources
+short_description: >-
+  Retrieve information about component template resources
 version_added: "1.0.0"
 description:
-  - Retrieve a single _component_template by its identifier, or list all _component_template resources.
+  - >-
+    Retrieve a single component template by its identifier,
+    or list all component template resources.
   - This module always reports C(changed=False).
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   id:
     description:
-      - The unique identifier of the _component_template to retrieve.
-      - When omitted, all _component_template resources are listed.
+      - The unique identifier of the component template to retrieve.
+      - When omitted, all component template resources are listed.
     type: str
     required: false
-
-
-
-
-
-
-
-
-
-
   page:
     description:
       - Page number for paginated results.
@@ -52,38 +45,30 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Get a specific _component_template
-  stevefulme1.elastic._component_template_info:
+- name: Get a specific component template
+  stevefulme1.elastic.component_template_info:
     id: "example_id"
   register: result
-
-- name: List all _component_template resources
-  stevefulme1.elastic._component_template_info:
+- name: List all component template resources
+  stevefulme1.elastic.component_template_info:
   register: result
-
-
-
-- name: List _component_template resources with pagination
-  stevefulme1.elastic._component_template_info:
+- name: List component template resources with pagination
+  stevefulme1.elastic.component_template_info:
     page: 1
     page_size: 50
   register: result
 """
 
 RETURN = r"""
-_component_templates:
-  description: List of _component_template resources matching the query.
+component_templates:
+  description: List of component template resources matching the query.
   returned: always
   type: list
   elements: dict
   contains:
-
     component_templates:
       description: >-
-        
       type: list
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -95,7 +80,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def fetch_single(client, identifier):
-    """Retrieve a single _component_template by identifier."""
+    """Retrieve a single component template by identifier."""
 
     # No single-resource GET endpoint; filter from list
     items = client.get("/_component_template")
@@ -107,23 +92,10 @@ def fetch_single(client, identifier):
     return None
 
 
-
 def fetch_list(client, module):
-    """List _component_template resources with optional filtering and pagination."""
+    """List component template resources with optional filtering and pagination."""
 
     params = {}
-
-
-
-
-
-
-
-
-
-
-
-
 
     page = module.params.get("page")
     page_size = module.params.get("page_size")
@@ -139,7 +111,6 @@ def fetch_list(client, module):
         return response if isinstance(response, list) else []
     else:
         return client.get_paginated("/_component_template", params=params)
-
 
 
 def main():
@@ -173,7 +144,7 @@ def main():
 
     result = dict(
         changed=False,
-        _component_templates=[],
+        component_templates=[],
     )
 
     try:
@@ -182,9 +153,9 @@ def main():
 
         if identifier is not None:
             item = fetch_single(client, identifier)
-            result["_component_templates"] = [item] if item else []
+            result["component_templates"] = [item] if item else []
         else:
-            result["_component_templates"] = fetch_list(client, module)
+            result["component_templates"] = fetch_list(client, module)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

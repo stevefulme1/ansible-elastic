@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -11,24 +11,23 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: query_rule_info
-short_description: Retrieve information about _query_rule resources
+short_description: >-
+  Retrieve information about query rule resources
 version_added: "1.0.0"
 description:
-  - Retrieve a single _query_rule by its identifier, or list all _query_rule resources.
+  - >-
+    Retrieve a single query rule by its identifier,
+    or list all query rule resources.
   - This module always reports C(changed=False).
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   ruleset_id:
     description:
-      - The unique identifier of the _query_rule to retrieve.
-      - When omitted, all _query_rule resources are listed.
+      - The unique identifier of the query rule to retrieve.
+      - When omitted, all query rule resources are listed.
     type: str
     required: false
-
-
-
-
   page:
     description:
       - Page number for paginated results.
@@ -46,56 +45,42 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Get a specific _query_rule
-  stevefulme1.elastic._query_rule_info:
+- name: Get a specific query rule
+  stevefulme1.elastic.query_rule_info:
     ruleset_id: "example_id"
   register: result
-
-- name: List all _query_rule resources
-  stevefulme1.elastic._query_rule_info:
+- name: List all query rule resources
+  stevefulme1.elastic.query_rule_info:
   register: result
-
-
-
-- name: List _query_rule resources with pagination
-  stevefulme1.elastic._query_rule_info:
+- name: List query rule resources with pagination
+  stevefulme1.elastic.query_rule_info:
     page: 1
     page_size: 50
   register: result
 """
 
 RETURN = r"""
-_query_rules:
-  description: List of _query_rule resources matching the query.
+query_rules:
+  description: List of query rule resources matching the query.
   returned: always
   type: list
   elements: dict
   contains:
-
     ruleset_id:
       description: >-
-        
       type: str
-
-
     rule_total_count:
       description: >-
         The number of rules associated with the ruleset.
       type: float
-
-
     rule_criteria_types_counts:
       description: >-
         A map of criteria type (for example, exact) to the number of rules of that type. NOTE: The...
       type: dict
-
-
     rule_type_counts:
       description: >-
         A map of rule type (for example, pinned) to the number of rules of that type.
       type: dict
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -107,7 +92,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def fetch_single(client, identifier):
-    """Retrieve a single _query_rule by identifier."""
+    """Retrieve a single query rule by identifier."""
 
     # No single-resource GET endpoint; filter from list
     items = client.get("/_query_rules")
@@ -119,17 +104,10 @@ def fetch_single(client, identifier):
     return None
 
 
-
 def fetch_list(client, module):
-    """List _query_rule resources with optional filtering and pagination."""
+    """List query rule resources with optional filtering and pagination."""
 
     params = {}
-
-
-
-
-
-
 
     page = module.params.get("page")
     page_size = module.params.get("page_size")
@@ -145,7 +123,6 @@ def fetch_list(client, module):
         return response if isinstance(response, list) else []
     else:
         return client.get_paginated("/_query_rules", params=params)
-
 
 
 def main():
@@ -173,7 +150,7 @@ def main():
 
     result = dict(
         changed=False,
-        _query_rules=[],
+        query_rules=[],
     )
 
     try:
@@ -182,9 +159,9 @@ def main():
 
         if identifier is not None:
             item = fetch_single(client, identifier)
-            result["_query_rules"] = [item] if item else []
+            result["query_rules"] = [item] if item else []
         else:
-            result["_query_rules"] = fetch_list(client, module)
+            result["query_rules"] = fetch_list(client, module)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -11,22 +11,23 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: data_stream_info
-short_description: Retrieve information about _data_stream resources
+short_description: >-
+  Retrieve information about data stream resources
 version_added: "1.0.0"
 description:
-  - Retrieve a single _data_stream by its identifier, or list all _data_stream resources.
+  - >-
+    Retrieve a single data stream by its identifier,
+    or list all data stream resources.
   - This module always reports C(changed=False).
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   id:
     description:
-      - The unique identifier of the _data_stream to retrieve.
-      - When omitted, all _data_stream resources are listed.
+      - The unique identifier of the data stream to retrieve.
+      - When omitted, all data stream resources are listed.
     type: str
     required: false
-
-
   page:
     description:
       - Page number for paginated results.
@@ -44,38 +45,30 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Get a specific _data_stream
-  stevefulme1.elastic._data_stream_info:
+- name: Get a specific data stream
+  stevefulme1.elastic.data_stream_info:
     id: "example_id"
   register: result
-
-- name: List all _data_stream resources
-  stevefulme1.elastic._data_stream_info:
+- name: List all data stream resources
+  stevefulme1.elastic.data_stream_info:
   register: result
-
-
-
-- name: List _data_stream resources with pagination
-  stevefulme1.elastic._data_stream_info:
+- name: List data stream resources with pagination
+  stevefulme1.elastic.data_stream_info:
     page: 1
     page_size: 50
   register: result
 """
 
 RETURN = r"""
-_data_streams:
-  description: List of _data_stream resources matching the query.
+data_streams:
+  description: List of data stream resources matching the query.
   returned: always
   type: list
   elements: dict
   contains:
-
     data_streams:
       description: >-
-        
       type: list
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -87,7 +80,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def fetch_single(client, identifier):
-    """Retrieve a single _data_stream by identifier."""
+    """Retrieve a single data stream by identifier."""
 
     # No single-resource GET endpoint; filter from list
     items = client.get("/_data_stream")
@@ -99,15 +92,10 @@ def fetch_single(client, identifier):
     return None
 
 
-
 def fetch_list(client, module):
-    """List _data_stream resources with optional filtering and pagination."""
+    """List data stream resources with optional filtering and pagination."""
 
     params = {}
-
-
-
-
 
     page = module.params.get("page")
     page_size = module.params.get("page_size")
@@ -123,7 +111,6 @@ def fetch_list(client, module):
         return response if isinstance(response, list) else []
     else:
         return client.get_paginated("/_data_stream", params=params)
-
 
 
 def main():
@@ -149,7 +136,7 @@ def main():
 
     result = dict(
         changed=False,
-        _data_streams=[],
+        data_streams=[],
     )
 
     try:
@@ -158,9 +145,9 @@ def main():
 
         if identifier is not None:
             item = fetch_single(client, identifier)
-            result["_data_streams"] = [item] if item else []
+            result["data_streams"] = [item] if item else []
         else:
-            result["_data_streams"] = fetch_list(client, module)
+            result["data_streams"] = fetch_list(client, module)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -14,153 +14,83 @@ module: ingest_pipeline
 short_description: Manage ingest
 version_added: "1.0.0"
 description:
-  - Create, update, and delete _ingest_pipeline resources.
+  - Create, update, and delete ingest pipeline resources.
   - Supports check mode and diff mode for safe operations.
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   state:
     description:
-      - Desired state of the _ingest_pipeline resource.
+      - Desired state of the ingest pipeline resource.
     type: str
     choices: ['present', 'absent']
     default: present
-
   _meta:
     description:
       - >-
-        
     type: dict
-
-
-
-
-
   deprecated:
     description:
       - >-
         Marks this ingest pipeline as deprecated. When a deprecated ingest pipeline is referenced as the...
     type: bool
-
-
-
     default: false
-
-
-
   description:
     description:
       - >-
         Description of the ingest pipeline.
     type: str
-
-
-
-
-
   field_access_pattern:
     description:
       - >-
-        
     type: str
-
-
     choices: ["classic", "flexible"]
-
-
-
-
   on_failure:
     description:
       - >-
         Processors to run immediately after a processor failure. Each processor supports a...
     type: list
-
-
-
-
-
+    elements: dict
   processors:
     description:
       - >-
         Processors used to perform transformations on documents before indexing. Processors run...
     type: list
-
-
-
-
-
+    elements: dict
   version:
     description:
       - >-
-        
     type: float
-
-
-
-
-
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-
-
-- name: Update a _ingest_pipeline
-  stevefulme1.elastic._ingest_pipeline:
+- name: Update a ingest pipeline
+  stevefulme1.elastic.ingest_pipeline:
     id: "existing_id"
-
-
     _meta: "updated__meta"
-
-
-
     deprecated: "updated_deprecated"
-
-
-
     description: "updated_description"
-
-
-
     field_access_pattern: "updated_field_access_pattern"
-
-
-
     on_failure: "updated_on_failure"
-
-
-
     processors: "updated_processors"
-
-
-
     version: "updated_version"
-
-
     state: present
-  # API:  
-
-
-
-- name: Delete a _ingest_pipeline
-  stevefulme1.elastic._ingest_pipeline:
+  # API:
+- name: Delete a ingest pipeline
+  stevefulme1.elastic.ingest_pipeline:
     id: "existing_id"
     state: absent
   # API: DELETE /_ingest/pipeline/{id}
-
 """
 
 RETURN = r"""
-
 acknowledged:
   description: >-
     For a successful response, this value is always true. On failure, an exception is returned instead.
   returned: success
   type: bool
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -172,7 +102,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def get_current_state(client, module):
-    """Retrieve the current state of the _ingest_pipeline via GET."""
+    """Retrieve the current state of the ingest pipeline via GET."""
 
     # No single-resource GET endpoint; fall back to list + filter
     identifier = module.params.get("id")
@@ -194,7 +124,6 @@ def get_current_state(client, module):
         return None
     except ClientError:
         return None
-
 
 
 def needs_update(current, desired):
@@ -251,6 +180,8 @@ def main():
 
 
 
+
+
             ),
 
             deprecated=dict(
@@ -258,7 +189,11 @@ def main():
 
 
 
+
+
+
                 default=False,
+
 
 
 
@@ -271,10 +206,14 @@ def main():
 
 
 
+
+
             ),
 
             field_access_pattern=dict(
                 type="str",
+
+
 
 
                 choices=['classic', 'flexible'],
@@ -287,6 +226,10 @@ def main():
             on_failure=dict(
                 type="list",
 
+                elements="dict",
+
+
+
 
 
 
@@ -296,6 +239,10 @@ def main():
             processors=dict(
                 type="list",
 
+                elements="dict",
+
+
+
 
 
 
@@ -304,6 +251,8 @@ def main():
 
             version=dict(
                 type="float",
+
+
 
 
 
@@ -340,7 +289,6 @@ def main():
 
                     pass
 
-
             elif needs_update(current, desired):
                 # Resource exists but needs updating
                 result["changed"] = True
@@ -359,12 +307,12 @@ def main():
                     )
                     result.update(response if isinstance(response, dict) else {})
 
-
             else:
                 # Resource exists and is up-to-date
 
                 result["acknowledged"] = current.get("acknowledged")
 
+                pass
 
         elif state == "absent":
             if current is not None:
@@ -379,7 +327,6 @@ def main():
                         "{id}", str(identifier)
                     )
                     client.delete(path)
-
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

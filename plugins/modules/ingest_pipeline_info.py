@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -11,36 +11,23 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: ingest_pipeline_info
-short_description: Retrieve information about _ingest_pipeline resources
+short_description: >-
+  Retrieve information about ingest pipeline resources
 version_added: "1.0.0"
 description:
-  - Retrieve a single _ingest_pipeline by its identifier, or list all _ingest_pipeline resources.
+  - >-
+    Retrieve a single ingest pipeline by its identifier,
+    or list all ingest pipeline resources.
   - This module always reports C(changed=False).
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   id:
     description:
-      - The unique identifier of the _ingest_pipeline to retrieve.
-      - When omitted, all _ingest_pipeline resources are listed.
+      - The unique identifier of the ingest pipeline to retrieve.
+      - When omitted, all ingest pipeline resources are listed.
     type: str
     required: false
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   page:
     description:
       - Page number for paginated results.
@@ -58,38 +45,31 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Get a specific _ingest_pipeline
-  stevefulme1.elastic._ingest_pipeline_info:
+- name: Get a specific ingest pipeline
+  stevefulme1.elastic.ingest_pipeline_info:
     id: "example_id"
   register: result
-
-- name: List all _ingest_pipeline resources
-  stevefulme1.elastic._ingest_pipeline_info:
+- name: List all ingest pipeline resources
+  stevefulme1.elastic.ingest_pipeline_info:
   register: result
-
-
-
-- name: List _ingest_pipeline resources with pagination
-  stevefulme1.elastic._ingest_pipeline_info:
+- name: List ingest pipeline resources with pagination
+  stevefulme1.elastic.ingest_pipeline_info:
     page: 1
     page_size: 50
   register: result
 """
 
 RETURN = r"""
-_ingest_pipelines:
-  description: List of _ingest_pipeline resources matching the query.
+ingest_pipelines:
+  description: List of ingest pipeline resources matching the query.
   returned: always
   type: list
   elements: dict
   contains:
-
     acknowledged:
       description: >-
         For a successful response, this value is always true. On failure, an exception is returned instead.
       type: bool
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -101,7 +81,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def fetch_single(client, identifier):
-    """Retrieve a single _ingest_pipeline by identifier."""
+    """Retrieve a single ingest pipeline by identifier."""
 
     # No single-resource GET endpoint; filter from list
     items = client.get("/_ingest/pipeline")
@@ -113,29 +93,10 @@ def fetch_single(client, identifier):
     return None
 
 
-
 def fetch_list(client, module):
-    """List _ingest_pipeline resources with optional filtering and pagination."""
+    """List ingest pipeline resources with optional filtering and pagination."""
 
     params = {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     page = module.params.get("page")
     page_size = module.params.get("page_size")
@@ -151,7 +112,6 @@ def fetch_list(client, module):
         return response if isinstance(response, list) else []
     else:
         return client.get_paginated("/_ingest/pipeline", params=params)
-
 
 
 def main():
@@ -191,7 +151,7 @@ def main():
 
     result = dict(
         changed=False,
-        _ingest_pipelines=[],
+        ingest_pipelines=[],
     )
 
     try:
@@ -200,9 +160,9 @@ def main():
 
         if identifier is not None:
             item = fetch_single(client, identifier)
-            result["_ingest_pipelines"] = [item] if item else []
+            result["ingest_pipelines"] = [item] if item else []
         else:
-            result["_ingest_pipelines"] = fetch_list(client, module)
+            result["ingest_pipelines"] = fetch_list(client, module)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

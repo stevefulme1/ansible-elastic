@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -14,364 +14,193 @@ module: connector
 short_description: Manage connector
 version_added: "1.0.0"
 description:
-  - Create, update, and delete _connector resources.
+  - Create, update, and delete connector resources.
   - Supports check mode and diff mode for safe operations.
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   state:
     description:
-      - Desired state of the _connector resource.
+      - Desired state of the connector resource.
     type: str
     choices: ['present', 'absent']
     default: present
-
   description:
     description:
       - >-
-        
     type: str
-
-
-
-
-
   index_name:
     description:
       - >-
-        
     type: str
-
-
-
-
-
   is_native:
     description:
       - >-
-        
     type: bool
-
-
-
-
-
   language:
     description:
       - >-
-        
     type: str
-
-
-
-
-
   name:
     description:
       - >-
-        
     type: str
-
-
-
-
-
   service_type:
     description:
       - >-
-        
     type: str
-
-
-
-
-
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-
-- name: Create a _connector
-  stevefulme1.elastic._connector:
-
-
-
-
-
-
-
-
-
-
-
-
-
+- name: Create a connector
+  stevefulme1.elastic.connector:
     state: present
   # API: POST /_connector
-
-
-
-- name: Update a _connector
-  stevefulme1.elastic._connector:
+- name: Update a connector
+  stevefulme1.elastic.connector:
     id: "existing_id"
-
-
     description: "updated_description"
-
-
-
     index_name: "updated_index_name"
-
-
-
     is_native: "updated_is_native"
-
-
-
     language: "updated_language"
-
-
-
     name: "updated_name"
-
-
-
     service_type: "updated_service_type"
-
-
     state: present
-  # API:  
-
-
-
-- name: Delete a _connector
-  stevefulme1.elastic._connector:
+  # API:
+- name: Delete a connector
+  stevefulme1.elastic.connector:
     id: "existing_id"
     state: absent
   # API: DELETE /_connector/{connector_id}
-
 """
 
 RETURN = r"""
-
 api_key_id:
   description: >-
-    
   returned: success
   type: str
-
-
 api_key_secret_id:
   description: >-
-    
   returned: success
   type: str
-
-
 configuration:
   description: >-
-    
   returned: success
   type: dict
-
-
 custom_scheduling:
   description: >-
-    
   returned: success
   type: dict
-
-
 deleted:
   description: >-
-    
   returned: success
   type: bool
-
-
 description:
   description: >-
-    
   returned: success
   type: str
-
-
 error:
   description: >-
-    
   returned: success
   type: str
-
-
 features:
   description: >-
-    
   returned: success
   type: dict
-
-
 filtering:
   description: >-
-    
   returned: success
   type: list
-
-
 id:
   description: >-
-    
   returned: success
   type: str
-
-
 index_name:
   description: >-
-    
   returned: success
   type: str
-
-
 is_native:
   description: >-
-    
   returned: success
   type: bool
-
-
 language:
   description: >-
-    
   returned: success
   type: str
-
-
 last_access_control_sync_error:
   description: >-
-    
   returned: success
   type: str
-
-
 last_access_control_sync_scheduled_at:
   description: >-
-    
   returned: success
   type: str
-
-
 last_access_control_sync_status:
   description: >-
-    
   returned: success
   type: str
-
-
 last_deleted_document_count:
   description: >-
-    
   returned: success
   type: float
-
-
 last_incremental_sync_scheduled_at:
   description: >-
-    
   returned: success
   type: str
-
-
 last_indexed_document_count:
   description: >-
-    
   returned: success
   type: float
-
-
 last_seen:
   description: >-
-    
   returned: success
   type: str
-
-
 last_sync_error:
   description: >-
-    
   returned: success
   type: str
-
-
 last_sync_scheduled_at:
   description: >-
-    
   returned: success
   type: str
-
-
 last_sync_status:
   description: >-
-    
   returned: success
   type: str
-
-
 last_synced:
   description: >-
-    
   returned: success
   type: str
-
-
 name:
   description: >-
-    
   returned: success
   type: str
-
-
 pipeline:
   description: >-
-    
   returned: success
   type: dict
-
-
 scheduling:
   description: >-
-    
   returned: success
   type: dict
-
-
 service_type:
   description: >-
-    
   returned: success
   type: str
-
-
 status:
   description: >-
-    
   returned: success
   type: str
-
-
 sync_cursor:
   description: >-
-    
   returned: success
   type: dict
-
-
 sync_now:
   description: >-
-    
   returned: success
   type: bool
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -383,7 +212,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def get_current_state(client, module):
-    """Retrieve the current state of the _connector via GET."""
+    """Retrieve the current state of the connector via GET."""
 
     # No single-resource GET endpoint; fall back to list + filter
     identifier = module.params.get("id")
@@ -406,7 +235,6 @@ def get_current_state(client, module):
         return None
     except ClientError:
         return None
-
 
 
 def needs_update(current, desired):
@@ -460,10 +288,14 @@ def main():
 
 
 
+
+
             ),
 
             index_name=dict(
                 type="str",
+
+
 
 
 
@@ -478,10 +310,14 @@ def main():
 
 
 
+
+
             ),
 
             language=dict(
                 type="str",
+
+
 
 
 
@@ -496,10 +332,14 @@ def main():
 
 
 
+
+
             ),
 
             service_type=dict(
                 type="str",
+
+
 
 
 
@@ -540,7 +380,6 @@ def main():
                     )
                     result.update(response if isinstance(response, dict) else {})
 
-
             elif needs_update(current, desired):
                 # Resource exists but needs updating
                 result["changed"] = True
@@ -558,7 +397,6 @@ def main():
                         data=desired,
                     )
                     result.update(response if isinstance(response, dict) else {})
-
 
             else:
                 # Resource exists and is up-to-date
@@ -625,6 +463,7 @@ def main():
 
                 result["sync_now"] = current.get("sync_now")
 
+                pass
 
         elif state == "absent":
             if current is not None:
@@ -639,7 +478,6 @@ def main():
                         "{id}", str(identifier)
                     )
                     client.delete(path)
-
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

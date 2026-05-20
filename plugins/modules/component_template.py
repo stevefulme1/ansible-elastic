@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-# Copyright: (c) 2024, Auto-generated
+# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import absolute_import, division, print_function
@@ -14,124 +14,65 @@ module: component_template
 short_description: Manage indices
 version_added: "1.0.0"
 description:
-  - Create, update, and delete _component_template resources.
+  - Create, update, and delete component template resources.
   - Supports check mode and diff mode for safe operations.
 author:
-  - "Auto-generated"
+  - "Steve Fulmer (@stevefulme1)"
 options:
   state:
     description:
-      - Desired state of the _component_template resource.
+      - Desired state of the component template resource.
     type: str
     choices: ['present', 'absent']
     default: present
-
   template:
     description:
       - >-
-        
     type: dict
-
     required: true
-
-
-
-
-
   _meta:
     description:
       - >-
-        
     type: dict
-
-
-
-
-
   deprecated:
     description:
       - >-
         Marks this index template as deprecated. When creating or updating a non-deprecated index...
     type: bool
-
-
-
-
-
   version:
     description:
       - >-
-        
     type: float
-
-
-
-
-
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-
-- name: Create a _component_template
-  stevefulme1.elastic._component_template:
-
-
+- name: Create a component template
+  stevefulme1.elastic.component_template:
     template: "example_template"
-
-
-
-
-
-
-
-
     state: present
   # API: POST /_component_template/{name}
-
-
-
-- name: Update a _component_template
-  stevefulme1.elastic._component_template:
+- name: Update a component template
+  stevefulme1.elastic.component_template:
     id: "existing_id"
-
-
-
-
     _meta: "updated__meta"
-
-
-
     deprecated: "updated_deprecated"
-
-
-
     version: "updated_version"
-
-
     state: present
-  # API:  
-
-
-
-- name: Delete a _component_template
-  stevefulme1.elastic._component_template:
+  # API:
+- name: Delete a component template
+  stevefulme1.elastic.component_template:
     id: "existing_id"
     state: absent
   # API: DELETE /_component_template/{name}
-
 """
 
 RETURN = r"""
-
 component_templates:
   description: >-
-    
   returned: success
   type: list
-
-
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -143,7 +84,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def get_current_state(client, module):
-    """Retrieve the current state of the _component_template via GET."""
+    """Retrieve the current state of the component template via GET."""
 
     # No single-resource GET endpoint; fall back to list + filter
     identifier = module.params.get("id")
@@ -165,7 +106,6 @@ def get_current_state(client, module):
         return None
     except ClientError:
         return None
-
 
 
 def needs_update(current, desired):
@@ -209,7 +149,9 @@ def main():
             template=dict(
                 type="dict",
 
+
                 required=True,
+
 
 
 
@@ -224,6 +166,8 @@ def main():
 
 
 
+
+
             ),
 
             deprecated=dict(
@@ -233,10 +177,14 @@ def main():
 
 
 
+
+
             ),
 
             version=dict(
                 type="float",
+
+
 
 
 
@@ -277,7 +225,6 @@ def main():
                     )
                     result.update(response if isinstance(response, dict) else {})
 
-
             elif needs_update(current, desired):
                 # Resource exists but needs updating
                 result["changed"] = True
@@ -296,12 +243,12 @@ def main():
                     )
                     result.update(response if isinstance(response, dict) else {})
 
-
             else:
                 # Resource exists and is up-to-date
 
                 result["component_templates"] = current.get("component_templates")
 
+                pass
 
         elif state == "absent":
             if current is not None:
@@ -316,7 +263,6 @@ def main():
                         "{id}", str(identifier)
                     )
                     client.delete(path)
-
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

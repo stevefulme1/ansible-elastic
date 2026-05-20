@@ -1,0 +1,125 @@
+---
+# Integration tests for stevefulme1.elastic.security_api_key
+# These tests verify create/delete lifecycle with idempotency and check_mode.
+# API keys are create-only (no update). Steps 5-6 are skipped.
+# A live Elasticsearch endpoint with security enabled is required.
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_key_name: "integration_test_api_key"
+    test_key_params:
+      state: present
+      name: "integration_test_api_key"
+      expiration: "1d"
+      role_descriptors:
+        test_role:
+          cluster:
+            - monitor
+      metadata:
+        purpose: "integration_test"
+# ============================================================
+# CREATE - check mode
+# ============================================================
+- name: Create API key (check mode)
+  stevefulme1.elastic.security_api_key: "{{ test_key_params }}"
+  check_mode: true
+  register: create_check
+- name: Assert create in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - create_check is changed
+    fail_msg: "Create in check mode should report changed=true"
+# ============================================================
+# CREATE - real
+# ============================================================
+- name: Create API key
+  stevefulme1.elastic.security_api_key: "{{ test_key_params }}"
+  register: create_result
+- name: Assert create reports changed
+  ansible.builtin.assert:
+    that:
+      - create_result is changed
+      - create_result.id is defined
+      - create_result.api_key is defined
+    fail_msg: "Create should report changed=true and return id and api_key"
+- name: Record created API key ID
+  ansible.builtin.set_fact:
+    created_key_id: "{{ create_result.id }}"
+# ============================================================
+# CREATE - idempotency (key exists, no update possible)
+# ============================================================
+- name: Create API key again (idempotency)
+  stevefulme1.elastic.security_api_key: "{{ test_key_params }}"
+  register: create_idempotent
+- name: Assert create is idempotent
+  ansible.builtin.assert:
+    that:
+      - create_idempotent is not changed
+    fail_msg: "Repeated create with same name should report changed=false"
+# ============================================================
+# READ - verify created resource
+# ============================================================
+- name: Get API key info by ID
+  stevefulme1.elastic.security_api_key_info:
+    id: "{{ created_key_id }}"
+  register: info_result
+- name: Assert resource exists
+  ansible.builtin.assert:
+    that:
+      - info_result.security_api_keys | length == 1
+      - info_result.security_api_keys[0].id == created_key_id
+      - info_result.security_api_keys[0].name == test_key_name
+    fail_msg: "Created resource does not match expected values"
+# ============================================================
+# UPDATE - skipped (API keys are create-only)
+# ============================================================
+# API keys cannot be updated. This is by design.
+# ============================================================
+# DELETE - check mode
+# ============================================================
+- name: Delete API key (check mode)
+  stevefulme1.elastic.security_api_key:
+    name: "{{ test_key_name }}"
+    id: "{{ created_key_id }}"
+    state: absent
+  check_mode: true
+  register: delete_check
+- name: Assert delete in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_check is changed
+    fail_msg: "Delete in check mode should report changed=true"
+- name: Verify API key still exists after check mode delete
+  stevefulme1.elastic.security_api_key_info:
+    id: "{{ created_key_id }}"
+  register: delete_check_verify
+- name: Assert resource still exists after check mode delete
+  ansible.builtin.assert:
+    that:
+      - delete_check_verify.security_api_keys | length == 1
+    fail_msg: "Resource should still exist after check mode delete"
+# ============================================================
+# DELETE - real
+# ============================================================
+- name: Delete API key
+  stevefulme1.elastic.security_api_key:
+    name: "{{ test_key_name }}"
+    id: "{{ created_key_id }}"
+    state: absent
+  register: delete_result
+- name: Assert delete reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_result is changed
+    fail_msg: "Delete should report changed=true"
+# DELETE - idempotency
+- name: Delete API key again (idempotency)
+  stevefulme1.elastic.security_api_key:
+    name: "{{ test_key_name }}"
+    id: "{{ created_key_id }}"
+    state: absent
+  register: delete_idempotent
+- name: Assert delete is idempotent
+  ansible.builtin.assert:
+    that:
+      - delete_idempotent is not changed
+    fail_msg: "Repeated delete should report changed=false"

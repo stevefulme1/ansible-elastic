@@ -1,0 +1,184 @@
+---
+# Integration tests for stevefulme1.elastic.security_detection_rule
+# These tests verify full CRUD lifecycle with idempotency and check_mode.
+# A live Kibana API endpoint is required.
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_rule_params:
+      state: present
+      name: "Integration Test High CPU Alert"
+      description: "Detects high CPU usage during integration tests"
+      risk_score: 50
+      severity: "medium"
+      type: "query"
+      query: "host.cpu.usage > 90"
+      index:
+        - "metrics-*"
+      interval: "5m"
+      from_time: "now-6m"
+      to_time: "now"
+      language: "kuery"
+      enabled: true
+      tags:
+        - integration-test
+      actions: []
+# ============================================================
+# CREATE - check mode
+# ============================================================
+- name: Create detection rule (check mode)  # noqa: args[module]
+  stevefulme1.elastic.security_detection_rule:
+    state: present
+  args: "{{ test_rule_params }}"
+  check_mode: true
+  register: create_check
+- name: Assert create in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - create_check is changed
+    fail_msg: "Create in check mode should report changed=true"
+# ============================================================
+# CREATE - real
+# ============================================================
+- name: Create detection rule  # noqa: args[module]
+  stevefulme1.elastic.security_detection_rule:
+    state: present
+  args: "{{ test_rule_params }}"
+  register: create_result
+- name: Assert create reports changed
+  ansible.builtin.assert:
+    that:
+      - create_result is changed
+    fail_msg: "Create should report changed=true"
+- name: Record created resource identifier
+  ansible.builtin.set_fact:
+    created_id: "{{ create_result.id }}"
+# ============================================================
+# CREATE - idempotency
+# ============================================================
+- name: Create detection rule again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.security_detection_rule:
+    rule_id: "{{ created_id }}"
+  args: "{{ test_rule_params }}"
+  register: create_idempotent
+- name: Assert create is idempotent
+  ansible.builtin.assert:
+    that:
+      - create_idempotent is not changed
+    fail_msg: "Repeated create with same params should report changed=false"
+# ============================================================
+# READ - verify created resource
+# ============================================================
+- name: Get detection rule info  # noqa: args[module]
+  stevefulme1.elastic.security_detection_rule_info:
+    rule_id: "{{ created_id }}"
+  register: info_result
+- name: Assert resource exists
+  ansible.builtin.assert:
+    that:
+      - info_result.security_detection_rules | length == 1
+    fail_msg: "Created resource does not match expected values"
+# ============================================================
+# UPDATE
+# ============================================================
+- name: Update detection rule  # noqa: args[module]
+  stevefulme1.elastic.security_detection_rule:
+    rule_id: "{{ created_id }}"
+    name: "Integration Test High CPU Alert"
+    description: "Updated - Detects high CPU usage"
+    risk_score: 75
+    severity: "high"
+    type: "query"
+    query: "host.cpu.usage > 80"
+    index:
+      - "metrics-*"
+    interval: "5m"
+    from_time: "now-6m"
+    to_time: "now"
+    language: "kuery"
+    enabled: true
+    tags:
+      - integration-test
+      - updated
+    actions: []
+    state: present
+  register: update_result
+- name: Assert update reports changed
+  ansible.builtin.assert:
+    that:
+      - update_result is changed
+    fail_msg: "Update should report changed=true"
+# UPDATE - idempotency
+- name: Update detection rule again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.security_detection_rule:
+    rule_id: "{{ created_id }}"
+    name: "Integration Test High CPU Alert"
+    description: "Updated - Detects high CPU usage"
+    risk_score: 75
+    severity: "high"
+    type: "query"
+    query: "host.cpu.usage > 80"
+    index:
+      - "metrics-*"
+    interval: "5m"
+    from_time: "now-6m"
+    to_time: "now"
+    language: "kuery"
+    enabled: true
+    tags:
+      - integration-test
+      - updated
+    actions: []
+    state: present
+  register: update_idempotent
+- name: Assert update is idempotent
+  ansible.builtin.assert:
+    that:
+      - update_idempotent is not changed
+    fail_msg: "Repeated update with same params should report changed=false"
+# ============================================================
+# DELETE - check mode
+# ============================================================
+- name: Delete detection rule (check mode)  # noqa: args[module]
+  stevefulme1.elastic.security_detection_rule:
+    rule_id: "{{ created_id }}"
+    state: absent
+  check_mode: true
+  register: delete_check
+- name: Assert delete in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_check is changed
+    fail_msg: "Delete in check mode should report changed=true"
+- name: Verify detection rule still exists after check mode delete  # noqa: args[module]
+  stevefulme1.elastic.security_detection_rule_info:
+    rule_id: "{{ created_id }}"
+  register: delete_check_verify
+- name: Assert resource still exists after check mode delete
+  ansible.builtin.assert:
+    that:
+      - delete_check_verify.security_detection_rules | length == 1
+    fail_msg: "Resource should still exist after check mode delete"
+# ============================================================
+# DELETE - real
+# ============================================================
+- name: Delete detection rule  # noqa: args[module]
+  stevefulme1.elastic.security_detection_rule:
+    rule_id: "{{ created_id }}"
+    state: absent
+  register: delete_result
+- name: Assert delete reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_result is changed
+    fail_msg: "Delete should report changed=true"
+# DELETE - idempotency
+- name: Delete detection rule again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.security_detection_rule:
+    rule_id: "{{ created_id }}"
+    state: absent
+  register: delete_idempotent
+- name: Assert delete is idempotent
+  ansible.builtin.assert:
+    that:
+      - delete_idempotent is not changed
+    fail_msg: "Repeated delete should report changed=false"

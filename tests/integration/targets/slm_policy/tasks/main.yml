@@ -1,0 +1,192 @@
+---
+# Integration tests for stevefulme1.elastic.slm_policy
+# These tests verify full CRUD lifecycle with idempotency and check_mode.
+# A live Elasticsearch endpoint is required.
+# NOTE: An SLM policy requires a snapshot repository to exist first.
+# Ensure "test_slm_repo" is created before running these tests.
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_slm_repo: "test_slm_repo"
+# ============================================================
+# PREREQUISITE - create snapshot repository for SLM tests
+# ============================================================
+- name: Create prerequisite snapshot repository  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository:
+    repository: "{{ test_slm_repo }}"
+    type: "fs"
+    settings:
+      location: "/tmp/test_slm_backups"
+    state: present
+# ============================================================
+# CREATE - check mode
+# ============================================================
+- name: Create SLM policy (check mode)  # noqa: args[module]
+  stevefulme1.elastic.slm_policy:
+    policy_id: "test_slm_nightly"
+    schedule: "0 30 1 * * ?"
+    name: "<test-snap-{now/d}>"
+    repository: "{{ test_slm_repo }}"
+    config:
+      indices:
+        - "*"
+      include_global_state: true
+    state: present
+  check_mode: true
+  register: create_check
+- name: Assert create in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - create_check is changed
+    fail_msg: "Create in check mode should report changed=true"
+# ============================================================
+# CREATE - real
+# ============================================================
+- name: Create SLM policy  # noqa: args[module]
+  stevefulme1.elastic.slm_policy:
+    policy_id: "test_slm_nightly"
+    schedule: "0 30 1 * * ?"
+    name: "<test-snap-{now/d}>"
+    repository: "{{ test_slm_repo }}"
+    config:
+      indices:
+        - "*"
+      include_global_state: true
+    state: present
+  register: create_result
+- name: Assert create reports changed
+  ansible.builtin.assert:
+    that:
+      - create_result is changed
+    fail_msg: "Create should report changed=true"
+# ============================================================
+# CREATE - idempotency
+# ============================================================
+- name: Create SLM policy again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.slm_policy:
+    policy_id: "test_slm_nightly"
+    schedule: "0 30 1 * * ?"
+    name: "<test-snap-{now/d}>"
+    repository: "{{ test_slm_repo }}"
+    config:
+      indices:
+        - "*"
+      include_global_state: true
+    state: present
+  register: create_idempotent
+- name: Assert create is idempotent
+  ansible.builtin.assert:
+    that:
+      - create_idempotent is not changed
+    fail_msg: "Repeated create with same params should report changed=false"
+# ============================================================
+# READ - verify created resource
+# ============================================================
+- name: Get SLM policy info  # noqa: args[module]
+  stevefulme1.elastic.slm_policy_info:
+    id: "test_slm_nightly"
+  register: info_result
+- name: Assert resource exists
+  ansible.builtin.assert:
+    that:
+      - info_result.slm_policies | length == 1
+    fail_msg: "Created resource should be retrievable via info module"
+# ============================================================
+# UPDATE
+# ============================================================
+- name: Update SLM policy  # noqa: args[module]
+  stevefulme1.elastic.slm_policy:
+    policy_id: "test_slm_nightly"
+    schedule: "0 0 2 * * ?"
+    name: "<test-snap-{now/d}>"
+    repository: "{{ test_slm_repo }}"
+    config:
+      indices:
+        - "*"
+      include_global_state: false
+    retention:
+      expire_after: "30d"
+      min_count: 5
+      max_count: 50
+    state: present
+  register: update_result
+- name: Assert update reports changed
+  ansible.builtin.assert:
+    that:
+      - update_result is changed
+    fail_msg: "Update should report changed=true"
+# UPDATE - idempotency
+- name: Update SLM policy again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.slm_policy:
+    policy_id: "test_slm_nightly"
+    schedule: "0 0 2 * * ?"
+    name: "<test-snap-{now/d}>"
+    repository: "{{ test_slm_repo }}"
+    config:
+      indices:
+        - "*"
+      include_global_state: false
+    retention:
+      expire_after: "30d"
+      min_count: 5
+      max_count: 50
+    state: present
+  register: update_idempotent
+- name: Assert update is idempotent
+  ansible.builtin.assert:
+    that:
+      - update_idempotent is not changed
+    fail_msg: "Repeated update with same params should report changed=false"
+# ============================================================
+# DELETE - check mode
+# ============================================================
+- name: Delete SLM policy (check mode)  # noqa: args[module]
+  stevefulme1.elastic.slm_policy:
+    policy_id: "test_slm_nightly"
+    state: absent
+  check_mode: true
+  register: delete_check
+- name: Assert delete in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_check is changed
+    fail_msg: "Delete in check mode should report changed=true"
+- name: Verify SLM policy still exists after check mode delete  # noqa: args[module]
+  stevefulme1.elastic.slm_policy_info:
+    id: "test_slm_nightly"
+  register: delete_check_verify
+- name: Assert resource still exists after check mode delete
+  ansible.builtin.assert:
+    that:
+      - delete_check_verify.slm_policies | length == 1
+    fail_msg: "Resource should still exist after check mode delete"
+# ============================================================
+# DELETE - real
+# ============================================================
+- name: Delete SLM policy  # noqa: args[module]
+  stevefulme1.elastic.slm_policy:
+    policy_id: "test_slm_nightly"
+    state: absent
+  register: delete_result
+- name: Assert delete reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_result is changed
+    fail_msg: "Delete should report changed=true"
+# DELETE - idempotency
+- name: Delete SLM policy again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.slm_policy:
+    policy_id: "test_slm_nightly"
+    state: absent
+  register: delete_idempotent
+- name: Assert delete is idempotent
+  ansible.builtin.assert:
+    that:
+      - delete_idempotent is not changed
+    fail_msg: "Repeated delete should report changed=false"
+# ============================================================
+# CLEANUP - remove prerequisite repository
+# ============================================================
+- name: Cleanup prerequisite snapshot repository  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository:
+    repository: "{{ test_slm_repo }}"
+    state: absent

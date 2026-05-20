@@ -1,0 +1,196 @@
+---
+# Integration tests for stevefulme1.elastic.ilm_policy
+# These tests verify full CRUD lifecycle with idempotency and check_mode.
+# A live Elasticsearch endpoint is required.
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_ilm_policy_params:
+      policy_id: "test_ilm_lifecycle_policy"
+      phases:
+        hot:
+          actions:
+            rollover:
+              max_primary_shard_size: "50gb"
+        delete:
+          min_age: "30d"
+          actions:
+            delete: {}
+      state: present
+# ============================================================
+# CREATE - check mode
+# ============================================================
+- name: Create ILM policy (check mode)  # noqa: args[module]
+  stevefulme1.elastic.ilm_policy:
+    policy_id: "test_ilm_lifecycle_policy"
+    phases:
+      hot:
+        actions:
+          rollover:
+            max_primary_shard_size: "50gb"
+      delete:
+        min_age: "30d"
+        actions:
+          delete: {}
+    state: present
+  check_mode: true
+  register: create_check
+- name: Assert create in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - create_check is changed
+    fail_msg: "Create in check mode should report changed=true"
+# ============================================================
+# CREATE - real
+# ============================================================
+- name: Create ILM policy  # noqa: args[module]
+  stevefulme1.elastic.ilm_policy:
+    policy_id: "test_ilm_lifecycle_policy"
+    phases:
+      hot:
+        actions:
+          rollover:
+            max_primary_shard_size: "50gb"
+      delete:
+        min_age: "30d"
+        actions:
+          delete: {}
+    state: present
+  register: create_result
+- name: Assert create reports changed
+  ansible.builtin.assert:
+    that:
+      - create_result is changed
+    fail_msg: "Create should report changed=true"
+# ============================================================
+# CREATE - idempotency
+# ============================================================
+- name: Create ILM policy again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.ilm_policy:
+    policy_id: "test_ilm_lifecycle_policy"
+    phases:
+      hot:
+        actions:
+          rollover:
+            max_primary_shard_size: "50gb"
+      delete:
+        min_age: "30d"
+        actions:
+          delete: {}
+    state: present
+  register: create_idempotent
+- name: Assert create is idempotent
+  ansible.builtin.assert:
+    that:
+      - create_idempotent is not changed
+    fail_msg: "Repeated create with same params should report changed=false"
+# ============================================================
+# READ - verify created resource
+# ============================================================
+- name: Get ILM policy info  # noqa: args[module]
+  stevefulme1.elastic.ilm_policy_info:
+    id: "test_ilm_lifecycle_policy"
+  register: info_result
+- name: Assert resource exists
+  ansible.builtin.assert:
+    that:
+      - info_result.ilm_policies | length == 1
+    fail_msg: "Created resource should be retrievable via info module"
+# ============================================================
+# UPDATE
+# ============================================================
+- name: Update ILM policy  # noqa: args[module]
+  stevefulme1.elastic.ilm_policy:
+    policy_id: "test_ilm_lifecycle_policy"
+    phases:
+      hot:
+        actions:
+          rollover:
+            max_primary_shard_size: "100gb"
+      warm:
+        min_age: "7d"
+        actions:
+          shrink:
+            number_of_shards: 1
+      delete:
+        min_age: "90d"
+        actions:
+          delete: {}
+    state: present
+  register: update_result
+- name: Assert update reports changed
+  ansible.builtin.assert:
+    that:
+      - update_result is changed
+    fail_msg: "Update should report changed=true"
+# UPDATE - idempotency
+- name: Update ILM policy again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.ilm_policy:
+    policy_id: "test_ilm_lifecycle_policy"
+    phases:
+      hot:
+        actions:
+          rollover:
+            max_primary_shard_size: "100gb"
+      warm:
+        min_age: "7d"
+        actions:
+          shrink:
+            number_of_shards: 1
+      delete:
+        min_age: "90d"
+        actions:
+          delete: {}
+    state: present
+  register: update_idempotent
+- name: Assert update is idempotent
+  ansible.builtin.assert:
+    that:
+      - update_idempotent is not changed
+    fail_msg: "Repeated update with same params should report changed=false"
+# ============================================================
+# DELETE - check mode
+# ============================================================
+- name: Delete ILM policy (check mode)  # noqa: args[module]
+  stevefulme1.elastic.ilm_policy:
+    policy_id: "test_ilm_lifecycle_policy"
+    state: absent
+  check_mode: true
+  register: delete_check
+- name: Assert delete in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_check is changed
+    fail_msg: "Delete in check mode should report changed=true"
+- name: Verify ILM policy still exists after check mode delete  # noqa: args[module]
+  stevefulme1.elastic.ilm_policy_info:
+    id: "test_ilm_lifecycle_policy"
+  register: delete_check_verify
+- name: Assert resource still exists after check mode delete
+  ansible.builtin.assert:
+    that:
+      - delete_check_verify.ilm_policies | length == 1
+    fail_msg: "Resource should still exist after check mode delete"
+# ============================================================
+# DELETE - real
+# ============================================================
+- name: Delete ILM policy  # noqa: args[module]
+  stevefulme1.elastic.ilm_policy:
+    policy_id: "test_ilm_lifecycle_policy"
+    state: absent
+  register: delete_result
+- name: Assert delete reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_result is changed
+    fail_msg: "Delete should report changed=true"
+# DELETE - idempotency
+- name: Delete ILM policy again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.ilm_policy:
+    policy_id: "test_ilm_lifecycle_policy"
+    state: absent
+  register: delete_idempotent
+- name: Assert delete is idempotent
+  ansible.builtin.assert:
+    that:
+      - delete_idempotent is not changed
+    fail_msg: "Repeated delete should report changed=false"

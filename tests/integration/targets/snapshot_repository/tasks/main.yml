@@ -1,0 +1,147 @@
+---
+# Integration tests for stevefulme1.elastic.snapshot_repository
+# These tests verify full CRUD lifecycle with idempotency and check_mode.
+# A live Elasticsearch endpoint is required.
+# ============================================================
+# CREATE - check mode
+# ============================================================
+- name: Create snapshot repository (check mode)  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository:
+    repository: "test_snapshot_repo"
+    type: "fs"
+    settings:
+      location: "/tmp/test_snapshot_backups"
+      compress: true
+    state: present
+  check_mode: true
+  register: create_check
+- name: Assert create in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - create_check is changed
+    fail_msg: "Create in check mode should report changed=true"
+# ============================================================
+# CREATE - real
+# ============================================================
+- name: Create snapshot repository  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository:
+    repository: "test_snapshot_repo"
+    type: "fs"
+    settings:
+      location: "/tmp/test_snapshot_backups"
+      compress: true
+    state: present
+  register: create_result
+- name: Assert create reports changed
+  ansible.builtin.assert:
+    that:
+      - create_result is changed
+    fail_msg: "Create should report changed=true"
+# ============================================================
+# CREATE - idempotency
+# ============================================================
+- name: Create snapshot repository again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository:
+    repository: "test_snapshot_repo"
+    type: "fs"
+    settings:
+      location: "/tmp/test_snapshot_backups"
+      compress: true
+    state: present
+  register: create_idempotent
+- name: Assert create is idempotent
+  ansible.builtin.assert:
+    that:
+      - create_idempotent is not changed
+    fail_msg: "Repeated create with same params should report changed=false"
+# ============================================================
+# READ - verify created resource
+# ============================================================
+- name: Get snapshot repository info  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository_info:
+    id: "test_snapshot_repo"
+  register: info_result
+- name: Assert resource exists
+  ansible.builtin.assert:
+    that:
+      - info_result.snapshot_repositories | length == 1
+    fail_msg: "Created resource should be retrievable via info module"
+# ============================================================
+# UPDATE
+# ============================================================
+- name: Update snapshot repository  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository:
+    repository: "test_snapshot_repo"
+    type: "fs"
+    settings:
+      location: "/tmp/test_snapshot_backups_v2"
+      compress: false
+    state: present
+  register: update_result
+- name: Assert update reports changed
+  ansible.builtin.assert:
+    that:
+      - update_result is changed
+    fail_msg: "Update should report changed=true"
+# UPDATE - idempotency
+- name: Update snapshot repository again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository:
+    repository: "test_snapshot_repo"
+    type: "fs"
+    settings:
+      location: "/tmp/test_snapshot_backups_v2"
+      compress: false
+    state: present
+  register: update_idempotent
+- name: Assert update is idempotent
+  ansible.builtin.assert:
+    that:
+      - update_idempotent is not changed
+    fail_msg: "Repeated update with same params should report changed=false"
+# ============================================================
+# DELETE - check mode
+# ============================================================
+- name: Delete snapshot repository (check mode)  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository:
+    repository: "test_snapshot_repo"
+    state: absent
+  check_mode: true
+  register: delete_check
+- name: Assert delete in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_check is changed
+    fail_msg: "Delete in check mode should report changed=true"
+- name: Verify snapshot repository still exists after check mode delete  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository_info:
+    id: "test_snapshot_repo"
+  register: delete_check_verify
+- name: Assert resource still exists after check mode delete
+  ansible.builtin.assert:
+    that:
+      - delete_check_verify.snapshot_repositories | length == 1
+    fail_msg: "Resource should still exist after check mode delete"
+# ============================================================
+# DELETE - real
+# ============================================================
+- name: Delete snapshot repository  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository:
+    repository: "test_snapshot_repo"
+    state: absent
+  register: delete_result
+- name: Assert delete reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_result is changed
+    fail_msg: "Delete should report changed=true"
+# DELETE - idempotency
+- name: Delete snapshot repository again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.snapshot_repository:
+    repository: "test_snapshot_repo"
+    state: absent
+  register: delete_idempotent
+- name: Assert delete is idempotent
+  ansible.builtin.assert:
+    that:
+      - delete_idempotent is not changed
+    fail_msg: "Repeated delete should report changed=false"

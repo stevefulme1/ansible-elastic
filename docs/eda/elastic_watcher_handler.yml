@@ -1,0 +1,80 @@
+---
+# Example EDA rulebook: Elastic Watcher Execution Handler
+#
+# Polls Elasticsearch Watcher execution history and runs
+# remediation or notification playbooks based on watch results.
+#
+# Usage:
+#   ansible-rulebook --rulebook elastic_watcher_handler.yml -i inventory.yml
+
+- name: Elastic Watcher Execution Handler
+  hosts: all
+  sources:
+    - stevefulme1.elastic.elastic_watcher:
+        api_url: "{{ lookup('env', 'ELASTICSEARCH_URL') }}"
+        api_key: "{{ lookup('env', 'ELASTIC_API_KEY') }}"
+        interval: 60
+        status_filter:
+          - executed
+          - failed
+        watch_id_filter:
+          - disk_space_alert
+          - memory_pressure_alert
+          - cluster_health_alert
+        validate_certs: true
+
+  rules:
+    - name: Remediate disk space watch
+      condition: >-
+        event.elastic_watcher.watch_id == "disk_space_alert"
+        and event.elastic_watcher.status == "executed"
+      action:
+        run_playbook:
+          name: remediate_disk_space.yml
+          extra_vars:
+            watch_id: "{{ event.elastic_watcher.watch_id }}"
+            execution_id: "{{ event.elastic_watcher.execution_id }}"
+            execution_time: "{{ event.elastic_watcher.execution_time }}"
+
+    - name: Remediate memory pressure
+      condition: >-
+        event.elastic_watcher.watch_id == "memory_pressure_alert"
+        and event.elastic_watcher.status == "executed"
+      action:
+        run_playbook:
+          name: remediate_memory.yml
+          extra_vars:
+            watch_id: "{{ event.elastic_watcher.watch_id }}"
+            trigger_event: "{{ event.elastic_watcher.trigger_event }}"
+
+    - name: Alert on cluster health degradation
+      condition: >-
+        event.elastic_watcher.watch_id == "cluster_health_alert"
+        and event.elastic_watcher.status == "executed"
+      action:
+        run_playbook:
+          name: escalate_cluster_health.yml
+          extra_vars:
+            watch_id: "{{ event.elastic_watcher.watch_id }}"
+            actions_results: "{{ event.elastic_watcher.actions_results }}"
+
+    - name: Investigate failed watch executions
+      condition: event.elastic_watcher.status == "failed"
+      action:
+        run_playbook:
+          name: investigate_failed_watch.yml
+          extra_vars:
+            watch_id: "{{ event.elastic_watcher.watch_id }}"
+            execution_id: "{{ event.elastic_watcher.execution_id }}"
+            messages: "{{ event.elastic_watcher.messages }}"
+
+    - name: Log all watcher executions
+      condition: event.elastic_watcher is defined
+      action:
+        run_playbook:
+          name: log_watcher_execution.yml
+          extra_vars:
+            watch_id: "{{ event.elastic_watcher.watch_id }}"
+            status: "{{ event.elastic_watcher.status }}"
+            execution_time: "{{ event.elastic_watcher.execution_time }}"
+            execution_duration: "{{ event.elastic_watcher.execution_duration }}"

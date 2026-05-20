@@ -9,6 +9,8 @@ description: Ansible collection for the Elasticsearch Request & Response Specifi
 license:
   - GPL-3.0-or-later
 tags:
+  - monitoring
+  - tools
   - elasticsearch
   - request
   - response

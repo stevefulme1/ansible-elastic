@@ -34,7 +34,7 @@ jobs:
       - name: Run yamllint
         working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
 
-        run: yamllint -s .
+        run: yamllint -c .yamllint roles/ plugins/ meta/ changelogs/ galaxy.yml
 
       - name: Run flake8
         working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
@@ -142,4 +142,3 @@ jobs:
 
 
           STEVEFULME1_ELASTIC_API_URL: ${{ secrets.API_URL }}
-

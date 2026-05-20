@@ -1,11 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 # Copyright 2026 Steve Fulmer
-# Apache-2.0 (see LICENSE)
 # GNU General Public License v3.0+
 # (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
-"""Ansible module: elastic_ilm_policy."""
+"""Ansible module: elastic_ilm_policy -- GET/PUT/DELETE /_ilm/policy/{name}."""
 
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
@@ -15,19 +14,29 @@ DOCUMENTATION = r"""
 module: elastic_ilm_policy
 short_description: Manage Elasticsearch ILM policies
 description:
-    - Manage Elasticsearch ILM policies in Elastic.
-    - Supports create, update, and delete operations.
+    - Create, update, or delete Index Lifecycle Management policies.
+    - Uses the Elasticsearch ILM API (/_ilm/policy/{name}).
+    - Idempotent -- a second run with identical parameters returns changed=False.
 version_added: "1.0.0"
 author:
     - Steve Fulmer (@stevefulme1)
 options:
+    policy_name:
+        description: Name of the ILM policy.
+        type: str
+        required: true
     state:
         description: Desired state of the resource.
         type: str
         default: present
         choices: [present, absent]
+    policy:
+        description:
+            - The ILM policy definition containing phases.
+            - Required when state=present.
+        type: dict
     host:
-        description: API host address.
+        description: Elasticsearch host (scheme://host:port).
         type: str
         required: true
     username:
@@ -48,21 +57,36 @@ options:
 """
 
 EXAMPLES = r"""
-- name: Create a ilm policy
+- name: Create an ILM policy
   stevefulme1.elastic.elastic_ilm_policy:
-    name: my-ilm-policy
+    host: "https://elasticsearch:9200"
+    api_key: "{{ elastic_api_key }}"
+    policy_name: my-lifecycle-policy
+    policy:
+      phases:
+        hot:
+          actions:
+            rollover:
+              max_size: 50gb
+              max_age: 30d
+        delete:
+          min_age: 90d
+          actions:
+            delete: {}
     state: present
 
-- name: Delete a ilm policy
+- name: Delete an ILM policy
   stevefulme1.elastic.elastic_ilm_policy:
-    policy_name: "example-id"
+    host: "https://elasticsearch:9200"
+    api_key: "{{ elastic_api_key }}"
+    policy_name: my-lifecycle-policy
     state: absent
 """
 
 RETURN = r"""
 ilm_policy:
-    description: Resource details.
-    returned: on success
+    description: The ILM policy definition as returned by the API.
+    returned: on success when state=present
     type: dict
 """
 
@@ -75,12 +99,27 @@ except ImportError:
     HAS_CLIENT = False
 
 
+def get_current_state(client, policy_name):
+    """GET /_ilm/policy/{name}, return None if 404."""
+    return client.get("ilm_policy", policy_name)
+
+
+def needs_update(current, desired_policy):
+    """Compare current policy phases with desired, return True if different."""
+    if not desired_policy:
+        return False
+    current_policy = current.get("policy", {})
+    current_phases = current_policy.get("phases", {})
+    desired_phases = desired_policy.get("phases", {})
+    return current_phases != desired_phases
+
+
 def main():
     module = AnsibleModule(
         argument_spec=dict(
             state=dict(type="str", default="present", choices=["present", "absent"]),
-            policy_name=dict(type="str"),
-            name=dict(type="str"),
+            policy_name=dict(type="str", required=True),
+            policy=dict(type="dict"),
             host=dict(type="str", required=True),
             username=dict(type="str"),
             password=dict(type="str", no_log=True),
@@ -89,7 +128,7 @@ def main():
         ),
         supports_check_mode=True,
         required_if=[
-            ("state", "absent", ("policy_name",)),
+            ("state", "present", ("policy",)),
         ],
     )
 
@@ -98,37 +137,32 @@ def main():
 
     client = ApiClient(module)
     state = module.params["state"]
-    resource_id = module.params.get("policy_name")
+    policy_name = module.params["policy_name"]
+    desired_policy = module.params.get("policy")
 
-    if state == "present":
-        existing = None
-        if resource_id:
-            existing = client.get("ilm_policy", resource_id)
-        elif module.params.get("name"):
-            candidates = client.list("ilm_policy", {{"name": module.params["name"]}})
-            if candidates:
-                existing = candidates[0]
+    current = get_current_state(client, policy_name)
 
-        if existing:
-            if module.check_mode:
-                module.exit_json(changed=False, ilm_policy=existing)
-            result = client.update("ilm_policy", resource_id or existing.get("id", ""), module.params)
-            module.exit_json(changed=True, ilm_policy=result)
-        else:
-            if module.check_mode:
-                module.exit_json(changed=True)
-            result = client.create("ilm_policy", module.params)
-            module.exit_json(changed=True, ilm_policy=result)
-    else:
-        existing = None
-        if resource_id:
-            existing = client.get("ilm_policy", resource_id)
-        if not existing:
+    if state == "absent":
+        if current is None:
             module.exit_json(changed=False)
         if module.check_mode:
             module.exit_json(changed=True)
-        client.delete("ilm_policy", resource_id)
+        client.delete("ilm_policy", policy_name)
         module.exit_json(changed=True)
+    else:
+        if current:
+            if not needs_update(current, desired_policy):
+                module.exit_json(changed=False, ilm_policy=current)
+            if module.check_mode:
+                module.exit_json(changed=True, ilm_policy=current,
+                                 diff=dict(before=current, after=desired_policy))
+            result = client.update("ilm_policy", policy_name, {"policy": desired_policy})
+            module.exit_json(changed=True, ilm_policy=result)
+        else:
+            if module.check_mode:
+                module.exit_json(changed=True, ilm_policy={})
+            result = client.create("ilm_policy", {"policy": desired_policy})
+            module.exit_json(changed=True, ilm_policy=result)
 
 
 if __name__ == "__main__":

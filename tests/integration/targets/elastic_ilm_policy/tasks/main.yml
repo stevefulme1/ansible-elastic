@@ -2,12 +2,22 @@
 # Integration tests for stevefulme1.elastic.elastic_ilm_policy
 # These tests require valid credentials configured in integration_config.yml
 
-- name: Create ilm_policy (check_mode)
+- name: Create ILM policy (check_mode)
   stevefulme1.elastic.elastic_ilm_policy:
     host: "{{ elastic_host }}"
     api_key: "{{ elastic_api_key }}"
+    policy_name: "ansible-test-{{ resource_prefix }}"
+    policy:
+      phases:
+        hot:
+          actions:
+            rollover:
+              max_size: 50gb
+        delete:
+          min_age: 90d
+          actions:
+            delete: {}
     state: present
-    name: "ansible-test-{{ resource_prefix }}"
     validate_certs: "{{ validate_certs | default(true) }}"
   check_mode: true
   register: check_result
@@ -17,27 +27,47 @@
     that:
       - check_result is changed
 
-- name: Create ilm_policy
+- name: Create ILM policy
   stevefulme1.elastic.elastic_ilm_policy:
     host: "{{ elastic_host }}"
     api_key: "{{ elastic_api_key }}"
+    policy_name: "ansible-test-{{ resource_prefix }}"
+    policy:
+      phases:
+        hot:
+          actions:
+            rollover:
+              max_size: 50gb
+        delete:
+          min_age: 90d
+          actions:
+            delete: {}
     state: present
-    name: "ansible-test-{{ resource_prefix }}"
     validate_certs: "{{ validate_certs | default(true) }}"
   register: create_result
 
-- name: Verify ilm_policy was created
+- name: Verify ILM policy was created
   ansible.builtin.assert:
     that:
       - create_result is changed
       - create_result.ilm_policy is defined
 
-- name: Create ilm_policy again (idempotency)
+- name: Create ILM policy again (idempotency)
   stevefulme1.elastic.elastic_ilm_policy:
     host: "{{ elastic_host }}"
     api_key: "{{ elastic_api_key }}"
+    policy_name: "ansible-test-{{ resource_prefix }}"
+    policy:
+      phases:
+        hot:
+          actions:
+            rollover:
+              max_size: 50gb
+        delete:
+          min_age: 90d
+          actions:
+            delete: {}
     state: present
-    name: "ansible-test-{{ resource_prefix }}"
     validate_certs: "{{ validate_certs | default(true) }}"
   register: idem_result
 
@@ -46,12 +76,12 @@
     that:
       - idem_result is not changed
 
-- name: Delete ilm_policy (check_mode)
+- name: Delete ILM policy (check_mode)
   stevefulme1.elastic.elastic_ilm_policy:
     host: "{{ elastic_host }}"
     api_key: "{{ elastic_api_key }}"
+    policy_name: "ansible-test-{{ resource_prefix }}"
     state: absent
-    name: "ansible-test-{{ resource_prefix }}"
     validate_certs: "{{ validate_certs | default(true) }}"
   check_mode: true
   register: delete_check
@@ -61,26 +91,26 @@
     that:
       - delete_check is changed
 
-- name: Delete ilm_policy
+- name: Delete ILM policy
   stevefulme1.elastic.elastic_ilm_policy:
     host: "{{ elastic_host }}"
     api_key: "{{ elastic_api_key }}"
+    policy_name: "ansible-test-{{ resource_prefix }}"
     state: absent
-    name: "ansible-test-{{ resource_prefix }}"
     validate_certs: "{{ validate_certs | default(true) }}"
   register: delete_result
 
-- name: Verify ilm_policy was deleted
+- name: Verify ILM policy was deleted
   ansible.builtin.assert:
     that:
       - delete_result is changed
 
-- name: Delete ilm_policy again (idempotent)
+- name: Delete ILM policy again (idempotent)
   stevefulme1.elastic.elastic_ilm_policy:
     host: "{{ elastic_host }}"
     api_key: "{{ elastic_api_key }}"
+    policy_name: "ansible-test-{{ resource_prefix }}"
     state: absent
-    name: "ansible-test-{{ resource_prefix }}"
     validate_certs: "{{ validate_certs | default(true) }}"
   register: delete_idem
 

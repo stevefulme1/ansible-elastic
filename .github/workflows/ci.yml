@@ -18,7 +18,7 @@ jobs:
           python-version: "3.12"
       - run: pip install ansible-core ansible-lint flake8
       - name: Ansible Lint
-        run: ansible-lint --profile production || true
+        run: ansible-lint --profile production
       - name: Flake8
         run: flake8 plugins/ --max-line-length=120 --ignore=E402,W503 --exclude=__init__.py
 
@@ -35,4 +35,3 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: pip install pytest requests ansible-core
       - run: pytest tests/unit/ -v
-

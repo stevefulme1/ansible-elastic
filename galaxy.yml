@@ -1,11 +1,11 @@
 ---
 namespace: stevefulme1
 name: elastic
-version: 2.1.2
+version: 0.1.0
 readme: README.md
 authors:
   - Steve Fulmer <sfulmer@redhat.com>
-description: Ansible collection for Elastic Stack (Elasticsearch, Kibana, Fleet) with EDA plugins
+description: Ansible collection for Elastic Stack (Elasticsearch, Kibana, Fleet) with EDA plugins Status: Pre-release. Under active development.
 license_file: LICENSE
 tags:
   - elasticsearch

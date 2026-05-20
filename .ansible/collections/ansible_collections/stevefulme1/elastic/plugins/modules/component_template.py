@@ -52,7 +52,7 @@ EXAMPLES = r"""
   stevefulme1.elastic.component_template:
     template: "example_template"
     state: present
-  # API: POST /_component_template/{name}
+    # API: POST /_component_template/{name}
 - name: Update a component template
   stevefulme1.elastic.component_template:
     id: "existing_id"
@@ -60,12 +60,12 @@ EXAMPLES = r"""
     deprecated: "updated_deprecated"
     version: "updated_version"
     state: present
-  # API:
+    # API:
 - name: Delete a component template
   stevefulme1.elastic.component_template:
     id: "existing_id"
     state: absent
-  # API: DELETE /_component_template/{name}
+    # API: DELETE /_component_template/{name}
 """
 
 RETURN = r"""

@@ -49,12 +49,12 @@ EXAMPLES = r"""
     match: "updated_match"
     range: "updated_range"
     state: present
-  # API:
+    # API:
 - name: Delete a enrich policy
   stevefulme1.elastic.enrich_policy:
     id: "existing_id"
     state: absent
-  # API: DELETE /_enrich/policy/{name}
+    # API: DELETE /_enrich/policy/{name}
 """
 
 RETURN = r"""

@@ -77,12 +77,12 @@ EXAMPLES = r"""
     processors: "updated_processors"
     version: "updated_version"
     state: present
-  # API:
+    # API:
 - name: Delete a ingest pipeline
   stevefulme1.elastic.ingest_pipeline:
     id: "existing_id"
     state: absent
-  # API: DELETE /_ingest/pipeline/{id}
+    # API: DELETE /_ingest/pipeline/{id}
 """
 
 RETURN = r"""

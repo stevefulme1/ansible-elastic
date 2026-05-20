@@ -57,7 +57,7 @@ EXAMPLES = r"""
 - name: Create a connector
   stevefulme1.elastic.connector:
     state: present
-  # API: POST /_connector
+    # API: POST /_connector
 - name: Update a connector
   stevefulme1.elastic.connector:
     id: "existing_id"
@@ -68,12 +68,12 @@ EXAMPLES = r"""
     name: "updated_name"
     service_type: "updated_service_type"
     state: present
-  # API:
+    # API:
 - name: Delete a connector
   stevefulme1.elastic.connector:
     id: "existing_id"
     state: absent
-  # API: DELETE /_connector/{connector_id}
+    # API: DELETE /_connector/{connector_id}
 """
 
 RETURN = r"""

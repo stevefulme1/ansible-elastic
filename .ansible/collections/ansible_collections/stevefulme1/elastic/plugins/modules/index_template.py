@@ -80,7 +80,7 @@ EXAMPLES = r"""
 - name: Create a index template
   stevefulme1.elastic.index_template:
     state: present
-  # API: POST /_index_template/{name}
+    # API: POST /_index_template/{name}
 - name: Update a index template
   stevefulme1.elastic.index_template:
     id: "existing_id"
@@ -95,12 +95,12 @@ EXAMPLES = r"""
     template: "updated_template"
     version: "updated_version"
     state: present
-  # API:
+    # API:
 - name: Delete a index template
   stevefulme1.elastic.index_template:
     id: "existing_id"
     state: absent
-  # API: DELETE /_index_template/{name}
+    # API: DELETE /_index_template/{name}
 """
 
 RETURN = r"""

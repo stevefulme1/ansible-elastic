@@ -34,12 +34,12 @@ EXAMPLES = r"""
   stevefulme1.elastic.data_stream:
     id: "existing_id"
     state: present
-  # API:
+    # API:
 - name: Delete a data stream
   stevefulme1.elastic.data_stream:
     id: "existing_id"
     state: absent
-  # API: DELETE /_data_stream/{name}
+    # API: DELETE /_data_stream/{name}
 """
 
 RETURN = r"""

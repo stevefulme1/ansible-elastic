@@ -67,12 +67,12 @@ EXAMPLES = r"""
   stevefulme1.elastic.logstash_pipeline:
     id: "existing_id"
     state: present
-  # API:
+    # API:
 - name: Delete a logstash pipeline
   stevefulme1.elastic.logstash_pipeline:
     id: "existing_id"
     state: absent
-  # API: DELETE /_logstash/pipeline/{id}
+    # API: DELETE /_logstash/pipeline/{id}
 """
 
 RETURN = r"""

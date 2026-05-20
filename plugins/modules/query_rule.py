@@ -39,12 +39,12 @@ EXAMPLES = r"""
   stevefulme1.elastic.query_rule:
     ruleset_id: "existing_id"
     state: present
-  # API:
+    # API:
 - name: Delete a query rule
   stevefulme1.elastic.query_rule:
     ruleset_id: "existing_id"
     state: absent
-  # API: DELETE /_query_rules/{ruleset_id}
+    # API: DELETE /_query_rules/{ruleset_id}
 """
 
 RETURN = r"""

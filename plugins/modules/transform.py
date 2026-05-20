@@ -86,12 +86,12 @@ EXAMPLES = r"""
     settings: "updated_settings"
     sync: "updated_sync"
     state: present
-  # API:
+    # API:
 - name: Delete a transform
   stevefulme1.elastic.transform:
     id: "existing_id"
     state: absent
-  # API: DELETE /_transform/{transform_id}
+    # API: DELETE /_transform/{transform_id}
 """
 
 RETURN = r"""

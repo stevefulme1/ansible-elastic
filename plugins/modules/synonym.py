@@ -44,12 +44,12 @@ EXAMPLES = r"""
   stevefulme1.elastic.synonym:
     id: "existing_id"
     state: present
-  # API:
+    # API:
 - name: Delete a synonym
   stevefulme1.elastic.synonym:
     id: "existing_id"
     state: absent
-  # API: DELETE /_synonyms/{set_id}/{rule_id}
+    # API: DELETE /_synonyms/{set_id}/{rule_id}
 """
 
 RETURN = r"""

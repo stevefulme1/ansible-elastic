@@ -109,14 +109,14 @@
    "name": "plugins/modules/enrich_policy.py",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "ea024a184517120f48cf50e2aa6fc73f79f88503d4ef20d8d677109a613b81de",
+   "chksum_sha256": "ccbc2418dc7749f0a66d0630e74ddb36e8105921fdd09445067c1aab6b5b349f",
    "format": 1
   },
   {
    "name": "plugins/modules/index_template.py",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "3471c858353bd64b92ef3d44452cc5335b0e7cb9c7d51dc66d2874a7ac63daf1",
+   "chksum_sha256": "ab1a9c46c72bd3ed7879e77a339185fb342be794bdc66e2558d21b85589e64d4",
    "format": 1
   },
   {
@@ -130,28 +130,28 @@
    "name": "plugins/modules/ingest_pipeline.py",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "ec756bbe045e8c2b404babc117f342161ce98d6b817801cc8cb5edcff6631ab5",
+   "chksum_sha256": "d3866b24a62a8b93217ae916c17089e61bd8c18301d3d003e2e131fdf87a64dd",
    "format": 1
   },
   {
    "name": "plugins/modules/synonym.py",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "6df096cf76bf2fe3dbc11933121c81db15c83e9bf7dadc6ab666ad8162317535",
+   "chksum_sha256": "d7546652f95e278479edd656b605720c3d1ccb5dc592a8c6e2e30c77956d0982",
    "format": 1
   },
   {
    "name": "plugins/modules/logstash_pipeline.py",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "3ae94bb308fb359ab7a645a7a01e62a953c746d29e05890abc11926d709e66ca",
+   "chksum_sha256": "8598140fbd0600a7a74bfbebdc4096dfac6394ba2a7b734fca53d49d856c1dc0",
    "format": 1
   },
   {
    "name": "plugins/modules/data_stream.py",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "fe501b7ecf0a5cd2fd1dcbfaa1d0f24660011153b840814112cc0b6263138345",
+   "chksum_sha256": "9652721bd7c131d84a95a1edb316ac4c2c18a593460ac515e577070da11b9abf",
    "format": 1
   },
   {
@@ -172,21 +172,21 @@
    "name": "plugins/modules/transform.py",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "c929146286cd3260a205a02ca06fd80059b8eecf33b3d99ba632e5b588495195",
+   "chksum_sha256": "4b81375c0775d4d19311a4723213882c8aa82c84f7f7dfd49811ebd263613ff8",
    "format": 1
   },
   {
    "name": "plugins/modules/connector.py",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "1e5ad2e3c39656c912eadb0f0d287939d97590044aecd0ee2364d42dc59e3120",
+   "chksum_sha256": "425435ba6b8e76b6eb4f948e557ba59aaefe27c765319ed13bce53a24d3f47e8",
    "format": 1
   },
   {
    "name": "plugins/modules/query_rule.py",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "61bee798c266771dff92e3446b15add2e5e3239e178622c9d703fedbbbac47ec",
+   "chksum_sha256": "167e83003ed979ed736f0e627ab1e48fc741fdf29f703368a806913d85535915",
    "format": 1
   },
   {
@@ -200,7 +200,7 @@
    "name": "plugins/modules/component_template.py",
    "ftype": "file",
    "chksum_type": "sha256",
-   "chksum_sha256": "98fc029d9374769abbfd911179e8dc71227ea3c7fc07aca13feb55e71ff8945b",
+   "chksum_sha256": "23441fba8500c20b45d32bbd4dc7ad3053a394ecfabfb0c4e837dbfb1172633f",
    "format": 1
   },
   {
@@ -561,6 +561,13 @@
    "format": 1
   },
   {
+   "name": ".gitignore",
+   "ftype": "file",
+   "chksum_type": "sha256",
+   "chksum_sha256": "8512ce516c536f99c38ee4355f3546e695ca8d712f609d644ba2234c9eae658c",
+   "format": 1
+  },
+  {
    "name": ".ansible",
    "ftype": "dir",
    "chksum_type": null,
@@ -597,6 +604,13 @@
   },
   {
    "name": ".ansible/collections/ansible_collections",
+   "ftype": "dir",
+   "chksum_type": null,
+   "chksum_sha256": null,
+   "format": 1
+  },
+  {
+   "name": ".ansible/collections/ansible_collections/stevefulme1",
    "ftype": "dir",
    "chksum_type": null,
    "chksum_sha256": null,

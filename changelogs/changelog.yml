@@ -1,7 +1,0 @@
----
-ancestor: null
-releases:
-  1.0.0:
-    release_date: '2026-05-15'
-    changes:
-      release_summary: Initial release of stevefulme1.elastic

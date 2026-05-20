@@ -4,20 +4,17 @@ name: elastic
 version: 0.1.0
 readme: README.md
 authors:
-  - Steve Fulmer <sfulmer@redhat.com>
-description: Ansible collection for Elastic Stack (Elasticsearch, Kibana, Fleet) with EDA plugins Status: Pre-release. Under active development.
-license_file: LICENSE
+  - Auto-generated
+description: Ansible collection for the Elasticsearch Request & Response Specification API
+license:
+  - GPL-3.0-or-later
 tags:
   - elasticsearch
-  - kibana
-  - elastic
-  - eda
-  - fleet
-  - observability
-  - logging
-  - monitoring
-dependencies: {}
+  - request
+  - response
+  - specification
 repository: https://github.com/stevefulme1/ansible-elastic
-documentation: https://github.com/stevefulme1/ansible-elastic
-homepage: https://github.com/stevefulme1/ansible-elastic
-issues: https://github.com/stevefulme1/ansible-elastic/issues
+build_ignore:
+  - tests/output
+  - .tox
+  - .venv

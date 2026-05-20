@@ -13,7 +13,7 @@ import time
 
 from ansible.module_utils.urls import open_url
 from ansible.module_utils.six.moves.urllib.error import HTTPError, URLError
-from ansible.module_utils.six.moves.urllib.parse import urlencode, urljoin
+from ansible.module_utils.six.moves.urllib.parse import urlencode
 
 
 class ClientError(Exception):

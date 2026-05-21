@@ -1,4 +1,4 @@
-"""Unit tests for stevefulme1.elastic.kibana_slo module."""
+"""Unit tests for stevefulme1.elastic.index_template module."""
 
 from __future__ import absolute_import, division, print_function
 __metaclass__ = type
@@ -6,19 +6,18 @@ __metaclass__ = type
 from unittest.mock import MagicMock, patch
 import pytest
 
-MODULE_PATH = "ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo"
+MODULE_PATH = "ansible_collections.stevefulme1.elastic.plugins.modules.index_template"
 CLIENT_PATH = "ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client"
 
 
 def _build_resource(**overrides):
-    """Return a mock kibana_slo resource dict."""
+    """Return a mock index_template resource dict."""
     base = {
         "id": "res-123",
-        "slo_id": "res-123",
-        "name": "test-name",
-        "description": "test-description",
-        "indicator": "test-indicator",
-        "time_window": "test-time_window"
+        "_meta": "test-_meta",
+        "allow_auto_create": "test-allow_auto_create",
+        "composed_of": "test-composed_of",
+        "data_stream": "test-data_stream"
     }
     base.update(overrides)
     return base
@@ -26,38 +25,83 @@ def _build_resource(**overrides):
 
 @pytest.fixture
 def resource_args(module_args):
-    """Module args for kibana_slo operations."""
+    """Module args for index_template operations."""
     module_args.update({
         "state": "present",
         "api_key": "test-api-key",
         "api_url": "https://api.example.com",
         "validate_certs": True,
         "request_timeout": 30,
-        "slo_id": None,
-        "name": None,
-        "description": None,
-        "indicator": None,
-        "time_window": None,
-        "budgeting_method": None,
-        "objective": None,
-        "tags": None
+        "_meta": None,
+        "allow_auto_create": None,
+        "composed_of": None,
+        "data_stream": None,
+        "deprecated": None,
+        "ignore_missing_component_templates": None,
+        "index_patterns": None,
+        "priority": None,
+        "template": None,
+        "version": None
     })
     return module_args
 
 
 class TestGetCurrentState:
-    """Test get_current_state() function (stub implementation)."""
+    """Test get_current_state() function."""
 
-    def test_returns_none_without_lookup(self, resource_args):
-        """get_current_state returns None when no lookup is performed."""
-        for k in list(resource_args.keys()):
-            if k.endswith("_id") or k == "id" or k == "name":
+    def test_returns_matching_resource(self, resource_args):
+        """get_current_state returns existing resource when found."""
+        resource_args["id"] = "res-123"
+        mock_client = MagicMock()
+        existing = _build_resource()
+        mock_client.get.return_value = {"items": [existing]}
+
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import get_current_state
+        result = get_current_state(mock_client, mock_module)
+        assert result is not None
+
+    def test_returns_none_when_not_found(self, resource_args):
+        """get_current_state returns None when resource does not exist."""
+        resource_args["id"] = "res-123"
+        mock_client = MagicMock()
+        mock_client.get.return_value = {"items": []}
+
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import get_current_state
+        result = get_current_state(mock_client, mock_module)
+        assert result is None
+
+    def test_returns_none_when_no_search_value(self, resource_args):
+        """get_current_state returns None when search value is missing."""
+        for k in ("id", "name", "id"):
+            if k in resource_args:
                 resource_args[k] = None
+
         mock_client = MagicMock()
         mock_module = MagicMock()
         mock_module.params = resource_args
 
-        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import get_current_state
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import get_current_state
+        result = get_current_state(mock_client, mock_module)
+        assert result is None
+
+    def test_handles_client_error(self, resource_args):
+        """get_current_state returns None on API error."""
+        resource_args["id"] = "res-123"
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import get_current_state
+        from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+
+        mock_client = MagicMock()
+        mock_client.get.side_effect = ClientError("API error")
+
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
         result = get_current_state(mock_client, mock_module)
         assert result is None
 
@@ -67,26 +111,26 @@ class TestNeedsUpdate:
 
     def test_returns_true_when_no_current(self):
         """needs_update returns True when current state is None."""
-        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import needs_update
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import needs_update
         assert needs_update(None, {"name": "test"}) is True
 
     def test_returns_true_when_values_differ(self):
         """needs_update returns True when desired differs from current."""
-        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import needs_update
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import needs_update
         current = {"name": "old-name", "id": "123"}
         desired = {"name": "new-name"}
         assert needs_update(current, desired) is True
 
     def test_returns_false_when_values_match(self):
         """needs_update returns False when desired matches current."""
-        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import needs_update
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import needs_update
         current = {"name": "same", "id": "123"}
         desired = {"name": "same"}
         assert needs_update(current, desired) is False
 
     def test_ignores_none_values_in_desired(self):
         """needs_update ignores None values in desired dict."""
-        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import needs_update
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import needs_update
         current = {"name": "test", "description": "desc"}
         desired = {"name": "test", "description": None}
         assert needs_update(current, desired) is False
@@ -100,7 +144,7 @@ class TestBuildPayload:
         mock_module = MagicMock()
         mock_module.params = resource_args
 
-        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import build_payload
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import build_payload
         payload = build_payload(mock_module)
         assert isinstance(payload, dict)
 
@@ -114,7 +158,7 @@ class TestBuildPayload:
         mock_module = MagicMock()
         mock_module.params = resource_args
 
-        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import build_payload
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import build_payload
         payload = build_payload(mock_module)
         for v in payload.values():
             assert v is not None
@@ -139,7 +183,7 @@ class TestCreate:
 
         # Patch get_current_state to return None (new resource)
         with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
-            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import main
+            from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import main
             main()
 
         mock_module.exit_json.assert_called_once()
@@ -158,7 +202,7 @@ class TestCreate:
         mock_client_cls.return_value = mock_client
 
         with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
-            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import main
+            from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import main
             main()
 
         mock_module.exit_json.assert_called_once()
@@ -184,7 +228,7 @@ class TestDelete:
 
         existing = _build_resource()
         with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
-            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import main
+            from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import main
             main()
 
         mock_module.exit_json.assert_called_once()
@@ -204,7 +248,7 @@ class TestDelete:
         mock_client_cls.return_value = mock_client
 
         with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
-            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import main
+            from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import main
             main()
 
         mock_module.exit_json.assert_called_once()
@@ -225,7 +269,7 @@ class TestDelete:
 
         existing = _build_resource()
         with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
-            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import main
+            from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import main
             main()
 
         mock_module.exit_json.assert_called_once()
@@ -240,20 +284,20 @@ class TestUpdate:
     @patch(f"{MODULE_PATH}.AnsibleModule")
     def test_update_when_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
         """Updating a resource when values differ sets changed=True."""
-        resource_args["name"] = "new-value"
+        resource_args["_meta"] = "new-value"
         mock_module = MagicMock()
         mock_module.params = resource_args
         mock_module.check_mode = False
         mock_ansible_cls.return_value = mock_module
 
         mock_client = MagicMock()
-        mock_client.put.return_value = _build_resource(name="new-value")
+        mock_client.put.return_value = _build_resource(_meta="new-value")
         mock_client_cls.return_value = mock_client
 
-        existing = _build_resource(name="old-value")
+        existing = _build_resource(_meta="old-value")
         with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
              patch(f"{MODULE_PATH}.needs_update", return_value=True):
-            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import main
+            from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import main
             main()
 
         mock_module.exit_json.assert_called_once()
@@ -283,7 +327,7 @@ class TestIdempotent:
 
         with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
              patch(f"{MODULE_PATH}.needs_update", return_value=False):
-            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_slo import main
+            from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import main
             main()
 
         mock_module.exit_json.assert_called_once()

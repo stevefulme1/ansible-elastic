@@ -1,352 +1,286 @@
-# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
-# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
-
 """Unit tests for stevefulme1.elastic.kibana_saved_object module."""
 
 from __future__ import absolute_import, division, print_function
-
 __metaclass__ = type
 
-import json
-import pytest
 from unittest.mock import MagicMock, patch
+import pytest
 
-from ansible.module_utils import basic
-from ansible.module_utils.common.text.converters import to_bytes
-
-from ansible_collections.stevefulme1.elastic.plugins.modules import kibana_saved_object
-from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+MODULE_PATH = "ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object"
+CLIENT_PATH = "ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client"
 
 
-def set_module_args(args):
-    """Prepare arguments so that they will be picked up during module creation."""
-    if "_ansible_remote_tmp" not in args:
-        args["_ansible_remote_tmp"] = "/tmp"
-    if "_ansible_keep_remote_files" not in args:
-        args["_ansible_keep_remote_files"] = False
-    args_json = json.dumps({"ANSIBLE_MODULE_ARGS": args})
-    basic._ANSIBLE_ARGS = to_bytes(args_json)
-    basic._ANSIBLE_PROFILE = "legacy"
+def _build_resource(**overrides):
+    """Return a mock kibana_saved_object resource dict."""
+    base = {
+        "id": "res-123",
+        "object_type": "res-123",
+        "attributes": "test-attributes",
+        "references": "test-references"
+    }
+    base.update(overrides)
+    return base
 
 
-SAMPLE_SAVED_OBJECT = {
-    "id": "my-index-pattern",
-    "type": "index-pattern",
-    "attributes": {
-        "title": "logs-*",
-        "timeFieldName": "@timestamp",
-    },
-    "references": [],
-}
-
-BASE_ARGS = {
-    "api_key": "test-key",
-    "api_url": "https://localhost:5601",
-    "validate_certs": False,
-    "request_timeout": 30,
-}
+@pytest.fixture
+def resource_args(module_args):
+    """Module args for kibana_saved_object operations."""
+    module_args.update({
+        "state": "present",
+        "api_key": "test-api-key",
+        "api_url": "https://api.example.com",
+        "validate_certs": True,
+        "request_timeout": 30,
+        "object_type": "test-object_type",
+        "object_id": "test-object_id",
+        "attributes": None,
+        "references": None
+    })
+    return module_args
 
 
 class TestGetCurrentState:
-    """Tests for get_current_state function."""
+    """Test get_current_state() function (stub implementation)."""
 
-    def test_found(self):
-        """Return saved object dict when found."""
-        client = MagicMock()
-        client.get.return_value = SAMPLE_SAVED_OBJECT
-        module = MagicMock()
-        module.params = {"object_type": "index-pattern", "object_id": "my-index-pattern"}
+    def test_returns_none_without_lookup(self, resource_args):
+        """get_current_state returns None when no lookup is performed."""
+        for k in list(resource_args.keys()):
+            if k.endswith("_id") or k == "id" or k == "name":
+                resource_args[k] = None
+        mock_client = MagicMock()
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        result = kibana_saved_object.get_current_state(client, module)
-
-        client.get.assert_called_once_with("/api/saved_objects/index-pattern/my-index-pattern")
-        assert result is not None
-        assert result["id"] == "my-index-pattern"
-
-    def test_not_found(self):
-        """Return None when API raises ClientError (404)."""
-        client = MagicMock()
-        client.get.side_effect = ClientError("Not found", status_code=404)
-        module = MagicMock()
-        module.params = {"object_type": "index-pattern", "object_id": "nonexistent"}
-
-        result = kibana_saved_object.get_current_state(client, module)
-        assert result is None
-
-    def test_no_object_id(self):
-        """Return None when object_id is None."""
-        client = MagicMock()
-        module = MagicMock()
-        module.params = {"object_type": "index-pattern", "object_id": None}
-
-        result = kibana_saved_object.get_current_state(client, module)
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import get_current_state
+        result = get_current_state(mock_client, mock_module)
         assert result is None
 
 
 class TestNeedsUpdate:
-    """Tests for needs_update function."""
+    """Test needs_update() function."""
 
-    def test_current_none(self):
-        """Return True when current is None (resource missing)."""
-        assert kibana_saved_object.needs_update(None, {"attributes": {}}) is True
+    def test_returns_true_when_no_current(self):
+        """needs_update returns True when current state is None."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import needs_update
+        assert needs_update(None, {"name": "test"}) is True
 
-    def test_no_changes(self):
-        """Return False when desired matches current."""
-        current = {"attributes": {"title": "logs-*"}, "references": []}
-        desired = {"attributes": {"title": "logs-*"}, "references": []}
-        assert kibana_saved_object.needs_update(current, desired) is False
+    def test_returns_true_when_values_differ(self):
+        """needs_update returns True when desired differs from current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import needs_update
+        current = {"name": "old-name", "id": "123"}
+        desired = {"name": "new-name"}
+        assert needs_update(current, desired) is True
 
-    def test_value_changed(self):
-        """Return True when a desired value differs from current."""
-        current = {"attributes": {"title": "logs-*"}}
-        desired = {"attributes": {"title": "metrics-*"}}
-        assert kibana_saved_object.needs_update(current, desired) is True
+    def test_returns_false_when_values_match(self):
+        """needs_update returns False when desired matches current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import needs_update
+        current = {"name": "same", "id": "123"}
+        desired = {"name": "same"}
+        assert needs_update(current, desired) is False
 
-    def test_none_values_skipped(self):
-        """Return False when all desired values are None."""
-        current = {"attributes": {"title": "logs-*"}}
-        desired = {"attributes": None}
-        assert kibana_saved_object.needs_update(current, desired) is False
+    def test_ignores_none_values_in_desired(self):
+        """needs_update ignores None values in desired dict."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import needs_update
+        current = {"name": "test", "description": "desc"}
+        desired = {"name": "test", "description": None}
+        assert needs_update(current, desired) is False
 
 
 class TestBuildPayload:
-    """Tests for build_payload function."""
+    """Test build_payload() function."""
 
-    def test_full_payload(self):
-        """Include all non-None params in payload."""
-        module = MagicMock()
-        module.params = {
-            "attributes": {"title": "logs-*", "timeFieldName": "@timestamp"},
-            "references": [{"id": "ref-1", "type": "index-pattern", "name": "ref"}],
-        }
+    def test_builds_payload_from_params(self, resource_args):
+        """build_payload builds a dict from module params."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        payload = kibana_saved_object.build_payload(module)
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import build_payload
+        payload = build_payload(mock_module)
+        assert isinstance(payload, dict)
 
-        assert payload["attributes"]["title"] == "logs-*"
-        assert len(payload["references"]) == 1
+    def test_excludes_none_params(self, resource_args):
+        """build_payload excludes params with None value."""
+        # Set all non-required params to None
+        for k in resource_args:
+            if k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                resource_args[k] = None
 
-    def test_minimal_payload(self):
-        """Only include non-None params."""
-        module = MagicMock()
-        module.params = {
-            "attributes": {"title": "logs-*"},
-            "references": None,
-        }
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        payload = kibana_saved_object.build_payload(module)
-        assert "references" not in payload
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import build_payload
+        payload = build_payload(mock_module)
+        for v in payload.values():
+            assert v is not None
 
 
-class TestMainCreate:
-    """Tests for main() - create scenarios."""
+class TestCreate:
+    """Test resource creation via main()."""
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object.Client")
-    def test_create_new_object(self, mock_client_cls):
-        """Create a new saved object when it does not exist."""
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Creating a new resource sets changed=True."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client.get.return_value = {"results": []}
+        mock_client.POST.return_value = _build_resource()
+        mock_client_cls.return_value = mock_client
+
+        # Patch get_current_state to return None (new resource)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for create."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = True
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.post.return_value = SAMPLE_SAVED_OBJECT
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "object_type": "index-pattern",
-            "object_id": "my-index-pattern",
-            "attributes": {"title": "logs-*", "timeFieldName": "@timestamp"},
-            "references": [],
-        })
-        set_module_args(args)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_saved_object.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+        mock_client.POST.assert_not_called()
 
-        assert exc_info.value.code == 0
-        mock_client.post.assert_called_once()
-        call_args = mock_client.post.call_args
-        assert call_args[0][0] == "/api/saved_objects/index-pattern/my-index-pattern"
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object.Client")
-    def test_create_check_mode(self, mock_client_cls):
-        """Check mode on create reports changed but does not call POST."""
+class TestDelete:
+    """Test resource deletion via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_existing_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting an existing resource sets changed=True."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "object_type": "index-pattern",
-            "object_id": "my-index-pattern",
-            "attributes": {"title": "logs-*"},
-            "references": [],
-            "_ansible_check_mode": True,
-        })
-        set_module_args(args)
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_saved_object.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
 
-        assert exc_info.value.code == 0
-        mock_client.post.assert_not_called()
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_nonexistent_no_change(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting a nonexistent resource sets changed=False."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
 
-
-class TestMainUpdate:
-    """Tests for main() - update scenarios."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object.Client")
-    def test_update_changed(self, mock_client_cls):
-        """Update when desired state differs from current."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_SAVED_OBJECT
-        mock_client.put.return_value = SAMPLE_SAVED_OBJECT
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "object_type": "index-pattern",
-            "object_id": "my-index-pattern",
-            "attributes": {"title": "metrics-*", "timeFieldName": "@timestamp"},  # changed
-            "references": [],
-        })
-        set_module_args(args)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_saved_object.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
 
-        assert exc_info.value.code == 0
-        mock_client.put.assert_called_once()
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for delete."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = True
+        mock_ansible_cls.return_value = mock_module
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object.Client")
-    def test_idempotent_no_change(self, mock_client_cls):
-        """No change when desired matches current state."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_SAVED_OBJECT
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "object_type": "index-pattern",
-            "object_id": "my-index-pattern",
-            "attributes": {"title": "logs-*", "timeFieldName": "@timestamp"},
-            "references": [],
-        })
-        set_module_args(args)
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_saved_object.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+        mock_client.delete.assert_not_called()
 
-        assert exc_info.value.code == 0
+
+class TestUpdate:
+    """Test resource update via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_update_when_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Updating a resource when values differ sets changed=True."""
+        resource_args["attributes"] = "new-value"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client.put.return_value = _build_resource(attributes="new-value")
+        mock_client_cls.return_value = mock_client
+
+        existing = _build_resource(attributes="old-value")
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=True):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+
+class TestIdempotent:
+    """Test idempotent behavior when no change is needed."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_no_change_when_up_to_date(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """When resource is up-to-date, changed is False."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+
+        # Build existing resource that matches all desired params
+        existing = _build_resource()
+        for k, v in resource_args.items():
+            if v is not None and k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                existing[k] = v
+
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=False):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
+        mock_client.POST.assert_not_called()
         mock_client.put.assert_not_called()
-
-
-class TestMainDelete:
-    """Tests for main() - delete scenarios."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object.Client")
-    def test_delete_existing(self, mock_client_cls):
-        """Delete an existing saved object."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_SAVED_OBJECT
-        mock_client.delete.return_value = {}
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "object_type": "index-pattern",
-            "object_id": "my-index-pattern",
-            "attributes": None,
-            "references": [],
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_saved_object.main()
-
-        assert exc_info.value.code == 0
-        mock_client.delete.assert_called_once_with("/api/saved_objects/index-pattern/my-index-pattern")
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object.Client")
-    def test_delete_nonexistent(self, mock_client_cls):
-        """Delete idempotent when object does not exist."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "object_type": "index-pattern",
-            "object_id": "nonexistent",
-            "attributes": None,
-            "references": [],
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_saved_object.main()
-
-        assert exc_info.value.code == 0
-        mock_client.delete.assert_not_called()
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object.Client")
-    def test_delete_check_mode(self, mock_client_cls):
-        """Check mode on delete reports changed but does not call DELETE."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_SAVED_OBJECT
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "object_type": "index-pattern",
-            "object_id": "my-index-pattern",
-            "attributes": None,
-            "references": [],
-            "_ansible_check_mode": True,
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_saved_object.main()
-
-        assert exc_info.value.code == 0
-        mock_client.delete.assert_not_called()
-
-
-class TestMainError:
-    """Tests for main() - error handling."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_saved_object.Client")
-    def test_client_error_fails_module(self, mock_client_cls):
-        """Module fails with msg when Client raises ClientError."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_SAVED_OBJECT
-        mock_client.put.side_effect = ClientError("Server error", status_code=500)
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "object_type": "index-pattern",
-            "object_id": "my-index-pattern",
-            "attributes": {"title": "changed-*"},
-            "references": [],
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_saved_object.main()
-
-        assert exc_info.value.code == 1

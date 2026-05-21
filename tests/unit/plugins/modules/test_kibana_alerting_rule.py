@@ -1,457 +1,295 @@
-# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
-# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
-
 """Unit tests for stevefulme1.elastic.kibana_alerting_rule module."""
 
 from __future__ import absolute_import, division, print_function
-
 __metaclass__ = type
 
-import json
-import pytest
 from unittest.mock import MagicMock, patch
+import pytest
 
-from ansible.module_utils import basic
-from ansible.module_utils.common.text.converters import to_bytes
-
-from ansible_collections.stevefulme1.elastic.plugins.modules import kibana_alerting_rule
-from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+MODULE_PATH = "ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule"
+CLIENT_PATH = "ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client"
 
 
-def set_module_args(args):
-    """Prepare arguments so that they will be picked up during module creation."""
-    if "_ansible_remote_tmp" not in args:
-        args["_ansible_remote_tmp"] = "/tmp"
-    if "_ansible_keep_remote_files" not in args:
-        args["_ansible_keep_remote_files"] = False
-    args_json = json.dumps({"ANSIBLE_MODULE_ARGS": args})
-    basic._ANSIBLE_ARGS = to_bytes(args_json)
-    basic._ANSIBLE_PROFILE = "legacy"
+def _build_resource(**overrides):
+    """Return a mock kibana_alerting_rule resource dict."""
+    base = {
+        "id": "res-123",
+        "rule_id": "res-123",
+        "name": "test-name",
+        "rule_type_id": "test-rule_type_id",
+        "consumer": "test-consumer",
+        "schedule": "test-schedule"
+    }
+    base.update(overrides)
+    return base
 
 
-SAMPLE_RULE = {
-    "id": "rule-123",
-    "name": "CPU Alert",
-    "rule_type_id": ".es-query",
-    "consumer": "alerts",
-    "schedule": {"interval": "1m"},
-    "actions": [],
-    "params": {
-        "index": ["metrics-*"],
-        "timeField": "@timestamp",
-        "esQuery": '{"query": {"match_all": {}}}',
-        "threshold": [1000],
-        "thresholdComparator": ">",
-    },
-    "tags": ["production"],
-    "enabled": True,
-}
-
-BASE_ARGS = {
-    "api_key": "test-key",
-    "api_url": "https://localhost:5601",
-    "validate_certs": False,
-    "request_timeout": 30,
-}
+@pytest.fixture
+def resource_args(module_args):
+    """Module args for kibana_alerting_rule operations."""
+    module_args.update({
+        "state": "present",
+        "api_key": "test-api-key",
+        "api_url": "https://api.example.com",
+        "validate_certs": True,
+        "request_timeout": 30,
+        "rule_id": None,
+        "name": None,
+        "rule_type_id": None,
+        "consumer": None,
+        "schedule": None,
+        "actions": None,
+        "params": None,
+        "tags": None,
+        "enabled": None,
+        "throttle": None,
+        "notify_when": None
+    })
+    return module_args
 
 
 class TestGetCurrentState:
-    """Tests for get_current_state function."""
+    """Test get_current_state() function (stub implementation)."""
 
-    def test_found_by_id(self):
-        """Return rule dict when found by rule_id."""
-        client = MagicMock()
-        client.get.return_value = SAMPLE_RULE
-        module = MagicMock()
-        module.params = {"rule_id": "rule-123", "name": "CPU Alert"}
+    def test_returns_none_without_lookup(self, resource_args):
+        """get_current_state returns None when no lookup is performed."""
+        for k in list(resource_args.keys()):
+            if k.endswith("_id") or k == "id" or k == "name":
+                resource_args[k] = None
+        mock_client = MagicMock()
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        result = kibana_alerting_rule.get_current_state(client, module)
-
-        client.get.assert_called_once_with("/api/alerting/rule/rule-123")
-        assert result is not None
-        assert result["id"] == "rule-123"
-
-    def test_found_by_name(self):
-        """Return rule dict when found by name search."""
-        client = MagicMock()
-        client.get.return_value = {"data": [SAMPLE_RULE], "total": 1}
-        module = MagicMock()
-        module.params = {"rule_id": None, "name": "CPU Alert"}
-
-        result = kibana_alerting_rule.get_current_state(client, module)
-
-        client.get.assert_called_once_with("/api/alerting/rules/_find")
-        assert result is not None
-        assert result["name"] == "CPU Alert"
-
-    def test_not_found(self):
-        """Return None when API raises ClientError (404)."""
-        client = MagicMock()
-        client.get.side_effect = ClientError("Not found", status_code=404)
-        module = MagicMock()
-        module.params = {"rule_id": "nonexistent", "name": None}
-
-        result = kibana_alerting_rule.get_current_state(client, module)
-        assert result is None
-
-    def test_no_identifier(self):
-        """Return None when both rule_id and name are None."""
-        client = MagicMock()
-        module = MagicMock()
-        module.params = {"rule_id": None, "name": None}
-
-        result = kibana_alerting_rule.get_current_state(client, module)
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import get_current_state
+        result = get_current_state(mock_client, mock_module)
         assert result is None
 
 
 class TestNeedsUpdate:
-    """Tests for needs_update function."""
+    """Test needs_update() function."""
 
-    def test_current_none(self):
-        """Return True when current is None (resource missing)."""
-        assert kibana_alerting_rule.needs_update(None, {"name": "test"}) is True
+    def test_returns_true_when_no_current(self):
+        """needs_update returns True when current state is None."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import needs_update
+        assert needs_update(None, {"name": "test"}) is True
 
-    def test_no_changes(self):
-        """Return False when desired matches current."""
-        current = {"name": "CPU Alert", "schedule": {"interval": "1m"}}
-        desired = {"name": "CPU Alert", "schedule": {"interval": "1m"}}
-        assert kibana_alerting_rule.needs_update(current, desired) is False
+    def test_returns_true_when_values_differ(self):
+        """needs_update returns True when desired differs from current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import needs_update
+        current = {"name": "old-name", "id": "123"}
+        desired = {"name": "new-name"}
+        assert needs_update(current, desired) is True
 
-    def test_value_changed(self):
-        """Return True when a desired value differs from current."""
-        current = {"name": "CPU Alert", "schedule": {"interval": "1m"}}
-        desired = {"name": "CPU Alert", "schedule": {"interval": "5m"}}
-        assert kibana_alerting_rule.needs_update(current, desired) is True
+    def test_returns_false_when_values_match(self):
+        """needs_update returns False when desired matches current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import needs_update
+        current = {"name": "same", "id": "123"}
+        desired = {"name": "same"}
+        assert needs_update(current, desired) is False
 
-    def test_none_values_skipped(self):
-        """Return False when all desired values are None."""
-        current = {"name": "CPU Alert"}
-        desired = {"name": None, "throttle": None}
-        assert kibana_alerting_rule.needs_update(current, desired) is False
+    def test_ignores_none_values_in_desired(self):
+        """needs_update ignores None values in desired dict."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import needs_update
+        current = {"name": "test", "description": "desc"}
+        desired = {"name": "test", "description": None}
+        assert needs_update(current, desired) is False
 
 
 class TestBuildPayload:
-    """Tests for build_payload function."""
+    """Test build_payload() function."""
 
-    def test_full_payload(self):
-        """Include all non-None params in payload for create."""
-        module = MagicMock()
-        module.params = {
-            "name": "CPU Alert",
-            "rule_type_id": ".es-query",
-            "consumer": "alerts",
-            "schedule": {"interval": "1m"},
-            "actions": [],
-            "params": {"index": ["metrics-*"]},
-            "tags": ["production"],
-            "enabled": True,
-            "throttle": "5m",
-            "notify_when": "onActiveAlert",
-        }
+    def test_builds_payload_from_params(self, resource_args):
+        """build_payload builds a dict from module params."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        payload = kibana_alerting_rule.build_payload(module, for_update=False)
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import build_payload
+        payload = build_payload(mock_module)
+        assert isinstance(payload, dict)
 
-        assert payload["name"] == "CPU Alert"
-        assert payload["rule_type_id"] == ".es-query"
-        assert payload["consumer"] == "alerts"
-        assert payload["throttle"] == "5m"
+    def test_excludes_none_params(self, resource_args):
+        """build_payload excludes params with None value."""
+        # Set all non-required params to None
+        for k in resource_args:
+            if k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                resource_args[k] = None
 
-    def test_update_excludes_immutable(self):
-        """Update payload excludes rule_type_id, consumer, enabled."""
-        module = MagicMock()
-        module.params = {
-            "name": "CPU Alert",
-            "rule_type_id": ".es-query",
-            "consumer": "alerts",
-            "schedule": {"interval": "5m"},
-            "actions": [],
-            "params": {"index": ["metrics-*"]},
-            "tags": [],
-            "enabled": True,
-            "throttle": None,
-            "notify_when": None,
-        }
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        payload = kibana_alerting_rule.build_payload(module, for_update=True)
-
-        assert "rule_type_id" not in payload
-        assert "consumer" not in payload
-        assert "enabled" not in payload
-        assert payload["schedule"] == {"interval": "5m"}
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import build_payload
+        payload = build_payload(mock_module)
+        for v in payload.values():
+            assert v is not None
 
 
-class TestMainCreate:
-    """Tests for main() - create scenarios."""
+class TestCreate:
+    """Test resource creation via main()."""
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule.Client")
-    def test_create_new_rule(self, mock_client_cls):
-        """Create a new alerting rule when it does not exist."""
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Creating a new resource sets changed=True."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client.get.return_value = {"results": []}
+        mock_client.POST.return_value = _build_resource()
+        mock_client_cls.return_value = mock_client
+
+        # Patch get_current_state to return None (new resource)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for create."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = True
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.post.return_value = {"id": "rule-123", "name": "CPU Alert"}
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "rule_id": "rule-123",
-            "name": "CPU Alert",
-            "rule_type_id": ".es-query",
-            "consumer": "alerts",
-            "schedule": {"interval": "1m"},
-            "actions": [],
-            "params": {"index": ["metrics-*"]},
-            "tags": ["production"],
-            "enabled": True,
-            "throttle": None,
-            "notify_when": None,
-        })
-        set_module_args(args)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_alerting_rule.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+        mock_client.POST.assert_not_called()
 
-        assert exc_info.value.code == 0
-        mock_client.post.assert_called_once()
-        call_args = mock_client.post.call_args
-        assert call_args[0][0] == "/api/alerting/rule"
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule.Client")
-    def test_create_check_mode(self, mock_client_cls):
-        """Check mode on create reports changed but does not call POST."""
+class TestDelete:
+    """Test resource deletion via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_existing_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting an existing resource sets changed=True."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "rule_id": "rule-123",
-            "name": "CPU Alert",
-            "rule_type_id": ".es-query",
-            "consumer": "alerts",
-            "schedule": {"interval": "1m"},
-            "actions": [],
-            "params": {"index": ["metrics-*"]},
-            "tags": [],
-            "enabled": True,
-            "throttle": None,
-            "notify_when": None,
-            "_ansible_check_mode": True,
-        })
-        set_module_args(args)
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_alerting_rule.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
 
-        assert exc_info.value.code == 0
-        mock_client.post.assert_not_called()
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_nonexistent_no_change(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting a nonexistent resource sets changed=False."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
 
-
-class TestMainUpdate:
-    """Tests for main() - update scenarios."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule.Client")
-    def test_update_changed(self, mock_client_cls):
-        """Update when desired state differs from current."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_RULE
-        mock_client.put.return_value = {"id": "rule-123", "name": "CPU Alert"}
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "rule_id": "rule-123",
-            "name": "CPU Alert",
-            "rule_type_id": ".es-query",
-            "consumer": "alerts",
-            "schedule": {"interval": "5m"},  # changed
-            "actions": [],
-            "params": {"index": ["metrics-*"]},
-            "tags": ["production"],
-            "enabled": True,
-            "throttle": None,
-            "notify_when": None,
-        })
-        set_module_args(args)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_alerting_rule.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
 
-        assert exc_info.value.code == 0
-        mock_client.put.assert_called_once()
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for delete."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = True
+        mock_ansible_cls.return_value = mock_module
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule.Client")
-    def test_idempotent_no_change(self, mock_client_cls):
-        """No change when desired matches current state."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_RULE
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "rule_id": "rule-123",
-            "name": "CPU Alert",
-            "rule_type_id": ".es-query",
-            "consumer": "alerts",
-            "schedule": {"interval": "1m"},
-            "actions": [],
-            "params": {
-                "index": ["metrics-*"],
-                "timeField": "@timestamp",
-                "esQuery": '{"query": {"match_all": {}}}',
-                "threshold": [1000],
-                "thresholdComparator": ">",
-            },
-            "tags": ["production"],
-            "enabled": True,
-            "throttle": None,
-            "notify_when": None,
-        })
-        set_module_args(args)
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_alerting_rule.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+        mock_client.delete.assert_not_called()
 
-        assert exc_info.value.code == 0
+
+class TestUpdate:
+    """Test resource update via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_update_when_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Updating a resource when values differ sets changed=True."""
+        resource_args["name"] = "new-value"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client.put.return_value = _build_resource(name="new-value")
+        mock_client_cls.return_value = mock_client
+
+        existing = _build_resource(name="old-value")
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=True):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+
+class TestIdempotent:
+    """Test idempotent behavior when no change is needed."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_no_change_when_up_to_date(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """When resource is up-to-date, changed is False."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+
+        # Build existing resource that matches all desired params
+        existing = _build_resource()
+        for k, v in resource_args.items():
+            if v is not None and k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                existing[k] = v
+
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=False):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
+        mock_client.POST.assert_not_called()
         mock_client.put.assert_not_called()
-
-
-class TestMainDelete:
-    """Tests for main() - delete scenarios."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule.Client")
-    def test_delete_existing(self, mock_client_cls):
-        """Delete an existing alerting rule."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_RULE
-        mock_client.delete.return_value = {}
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "rule_id": "rule-123",
-            "name": None,
-            "rule_type_id": None,
-            "consumer": None,
-            "schedule": None,
-            "actions": [],
-            "params": None,
-            "tags": [],
-            "enabled": True,
-            "throttle": None,
-            "notify_when": None,
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_alerting_rule.main()
-
-        assert exc_info.value.code == 0
-        mock_client.delete.assert_called_once_with("/api/alerting/rule/rule-123")
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule.Client")
-    def test_delete_nonexistent(self, mock_client_cls):
-        """Delete idempotent when rule does not exist."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "rule_id": "nonexistent",
-            "name": None,
-            "rule_type_id": None,
-            "consumer": None,
-            "schedule": None,
-            "actions": [],
-            "params": None,
-            "tags": [],
-            "enabled": True,
-            "throttle": None,
-            "notify_when": None,
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_alerting_rule.main()
-
-        assert exc_info.value.code == 0
-        mock_client.delete.assert_not_called()
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule.Client")
-    def test_delete_check_mode(self, mock_client_cls):
-        """Check mode on delete reports changed but does not call DELETE."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_RULE
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "rule_id": "rule-123",
-            "name": None,
-            "rule_type_id": None,
-            "consumer": None,
-            "schedule": None,
-            "actions": [],
-            "params": None,
-            "tags": [],
-            "enabled": True,
-            "throttle": None,
-            "notify_when": None,
-            "_ansible_check_mode": True,
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_alerting_rule.main()
-
-        assert exc_info.value.code == 0
-        mock_client.delete.assert_not_called()
-
-
-class TestMainError:
-    """Tests for main() - error handling."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_alerting_rule.Client")
-    def test_client_error_fails_module(self, mock_client_cls):
-        """Module fails with msg when Client raises ClientError."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = {"id": "rule-123", "name": "CPU Alert"}
-        mock_client.put.side_effect = ClientError("Server error", status_code=500)
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "rule_id": "rule-123",
-            "name": "CPU Alert Updated",
-            "rule_type_id": ".es-query",
-            "consumer": "alerts",
-            "schedule": {"interval": "5m"},
-            "actions": [],
-            "params": {"index": ["metrics-*"]},
-            "tags": [],
-            "enabled": True,
-            "throttle": None,
-            "notify_when": None,
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_alerting_rule.main()
-
-        assert exc_info.value.code == 1

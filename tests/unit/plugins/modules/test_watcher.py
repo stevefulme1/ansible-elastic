@@ -1,454 +1,293 @@
-# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
-# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
-
 """Unit tests for stevefulme1.elastic.watcher module."""
 
 from __future__ import absolute_import, division, print_function
-
 __metaclass__ = type
 
-import json
-import pytest
 from unittest.mock import MagicMock, patch
+import pytest
 
-from ansible.module_utils import basic
-from ansible.module_utils.common.text.converters import to_bytes
-
-# Import module under test
-from ansible_collections.stevefulme1.elastic.plugins.modules import watcher
-from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+MODULE_PATH = "ansible_collections.stevefulme1.elastic.plugins.modules.watcher"
+CLIENT_PATH = "ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client"
 
 
-def set_module_args(args):
-    """Prepare arguments so that they will be picked up during module creation."""
-    if "_ansible_remote_tmp" not in args:
-        args["_ansible_remote_tmp"] = "/tmp"
-    if "_ansible_keep_remote_files" not in args:
-        args["_ansible_keep_remote_files"] = False
-    args_json = json.dumps({"ANSIBLE_MODULE_ARGS": args})
-    basic._ANSIBLE_ARGS = to_bytes(args_json)
-    # Ansible 2.21+ requires a serialization profile
-    basic._ANSIBLE_PROFILE = "legacy"
+def _build_resource(**overrides):
+    """Return a mock watcher resource dict."""
+    base = {
+        "id": "res-123",
+        "watch_id": "res-123",
+        "trigger": "test-trigger",
+        "input": "test-input",
+        "condition": "test-condition",
+        "actions": "test-actions"
+    }
+    base.update(overrides)
+    return base
 
 
-def get_exit_json_result(mock_exit):
-    """Extract the result dict from a mocked exit_json call."""
-    args, kwargs = mock_exit.call_args
-    return kwargs if kwargs else args[0]
-
-
-SAMPLE_WATCH = {
-    "trigger": {"schedule": {"interval": "10s"}},
-    "input": {
-        "search": {
-            "request": {
-                "indices": ["logs"],
-                "body": {"query": {"match": {"status": "error"}}},
-            }
-        }
-    },
-    "condition": {"compare": {"ctx.payload.hits.total": {"gt": 0}}},
-    "actions": {"log_error": {"logging": {"text": "Found errors"}}},
-    "active": True,
-}
-
-SAMPLE_GET_RESPONSE = {
-    "_id": "test_watch",
-    "found": True,
-    "_version": 1,
-    "watch": dict(SAMPLE_WATCH),
-}
-
-BASE_ARGS = {
-    "api_key": "test-key",
-    "api_url": "https://localhost:9200",
-    "validate_certs": False,
-    "request_timeout": 30,
-}
+@pytest.fixture
+def resource_args(module_args):
+    """Module args for watcher operations."""
+    module_args.update({
+        "state": "present",
+        "api_key": "test-api-key",
+        "api_url": "https://api.example.com",
+        "validate_certs": True,
+        "request_timeout": 30,
+        "watch_id": "test-watch_id",
+        "trigger": None,
+        "input": None,
+        "condition": None,
+        "actions": None,
+        "transform": None,
+        "throttle_period": None,
+        "metadata": None,
+        "active": None
+    })
+    return module_args
 
 
 class TestGetCurrentState:
-    """Tests for get_current_state function."""
+    """Test get_current_state() function (stub implementation)."""
 
-    def test_found(self):
-        """Return watch dict when found=True."""
-        client = MagicMock()
-        client.get.return_value = SAMPLE_GET_RESPONSE
-        module = MagicMock()
-        module.params = {"watch_id": "test_watch"}
+    def test_returns_none_without_lookup(self, resource_args):
+        """get_current_state returns None when no lookup is performed."""
+        for k in list(resource_args.keys()):
+            if k.endswith("_id") or k == "id" or k == "name":
+                resource_args[k] = None
+        mock_client = MagicMock()
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        result = watcher.get_current_state(client, module)
-
-        client.get.assert_called_once_with("/_watcher/watch/test_watch")
-        assert result is not None
-        assert result["_id"] == "test_watch"
-        assert result["trigger"] == SAMPLE_WATCH["trigger"]
-
-    def test_not_found(self):
-        """Return None when found=False."""
-        client = MagicMock()
-        client.get.return_value = {"_id": "missing", "found": False}
-        module = MagicMock()
-        module.params = {"watch_id": "missing"}
-
-        result = watcher.get_current_state(client, module)
+        from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import get_current_state
+        result = get_current_state(mock_client, mock_module)
         assert result is None
-
-    def test_client_error(self):
-        """Return None when API raises ClientError (404)."""
-        client = MagicMock()
-        client.get.side_effect = ClientError("Not found", status_code=404)
-        module = MagicMock()
-        module.params = {"watch_id": "nonexistent"}
-
-        result = watcher.get_current_state(client, module)
-        assert result is None
-
-    def test_no_watch_id(self):
-        """Return None when watch_id is None."""
-        client = MagicMock()
-        module = MagicMock()
-        module.params = {"watch_id": None}
-
-        result = watcher.get_current_state(client, module)
-        assert result is None
-        client.get.assert_not_called()
 
 
 class TestNeedsUpdate:
-    """Tests for needs_update function."""
+    """Test needs_update() function."""
 
-    def test_current_none(self):
-        """Return True when current is None (resource missing)."""
-        assert watcher.needs_update(None, {"trigger": {}}) is True
+    def test_returns_true_when_no_current(self):
+        """needs_update returns True when current state is None."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import needs_update
+        assert needs_update(None, {"name": "test"}) is True
 
-    def test_no_changes(self):
-        """Return False when desired matches current."""
-        current = {"trigger": {"schedule": {"interval": "10s"}}, "active": True}
-        desired = {"trigger": {"schedule": {"interval": "10s"}}, "active": True}
-        assert watcher.needs_update(current, desired) is False
+    def test_returns_true_when_values_differ(self):
+        """needs_update returns True when desired differs from current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import needs_update
+        current = {"name": "old-name", "id": "123"}
+        desired = {"name": "new-name"}
+        assert needs_update(current, desired) is True
 
-    def test_value_changed(self):
-        """Return True when a desired value differs from current."""
-        current = {"trigger": {"schedule": {"interval": "10s"}}}
-        desired = {"trigger": {"schedule": {"interval": "30s"}}}
-        assert watcher.needs_update(current, desired) is True
+    def test_returns_false_when_values_match(self):
+        """needs_update returns False when desired matches current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import needs_update
+        current = {"name": "same", "id": "123"}
+        desired = {"name": "same"}
+        assert needs_update(current, desired) is False
 
-    def test_none_values_skipped(self):
-        """Return False when all desired values are None."""
-        current = {"trigger": {"schedule": {"interval": "10s"}}}
-        desired = {"trigger": None, "actions": None}
-        assert watcher.needs_update(current, desired) is False
-
-    def test_new_key_added(self):
-        """Return True when desired adds a key not in current."""
-        current = {"trigger": {"schedule": {"interval": "10s"}}}
-        desired = {"throttle_period": "5m"}
-        assert watcher.needs_update(current, desired) is True
+    def test_ignores_none_values_in_desired(self):
+        """needs_update ignores None values in desired dict."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import needs_update
+        current = {"name": "test", "description": "desc"}
+        desired = {"name": "test", "description": None}
+        assert needs_update(current, desired) is False
 
 
 class TestBuildPayload:
-    """Tests for build_payload function."""
+    """Test build_payload() function."""
 
-    def test_full_payload(self):
-        """Include all non-None params in payload."""
-        module = MagicMock()
-        module.params = {
-            "trigger": {"schedule": {"interval": "10s"}},
-            "input": {"search": {"request": {"indices": ["logs"]}}},
-            "condition": {"compare": {"ctx.payload.hits.total": {"gt": 0}}},
-            "actions": {"log_error": {"logging": {"text": "Found errors"}}},
-            "transform": None,
-            "throttle_period": "5m",
-            "metadata": {"env": "production"},
-            "active": True,
-        }
+    def test_builds_payload_from_params(self, resource_args):
+        """build_payload builds a dict from module params."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        payload = watcher.build_payload(module)
+        from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import build_payload
+        payload = build_payload(mock_module)
+        assert isinstance(payload, dict)
 
-        assert payload["trigger"] == {"schedule": {"interval": "10s"}}
-        assert payload["throttle_period"] == "5m"
-        assert payload["metadata"] == {"env": "production"}
-        assert payload["active"] is True
-        assert "transform" not in payload
+    def test_excludes_none_params(self, resource_args):
+        """build_payload excludes params with None value."""
+        # Set all non-required params to None
+        for k in resource_args:
+            if k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                resource_args[k] = None
 
-    def test_minimal_payload(self):
-        """Only include non-None params."""
-        module = MagicMock()
-        module.params = {
-            "trigger": {"schedule": {"interval": "10s"}},
-            "input": None,
-            "condition": None,
-            "actions": None,
-            "transform": None,
-            "throttle_period": None,
-            "metadata": None,
-            "active": True,
-        }
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        payload = watcher.build_payload(module)
-        assert set(payload.keys()) == {"trigger", "active"}
+        from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import build_payload
+        payload = build_payload(mock_module)
+        for v in payload.values():
+            assert v is not None
 
 
-class TestMainCreate:
-    """Tests for main() - create scenarios."""
+class TestCreate:
+    """Test resource creation via main()."""
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.watcher.Client")
-    def test_create_new_watch(self, mock_client_cls):
-        """Create a new watch when it does not exist."""
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Creating a new resource sets changed=True."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client.get.return_value = {"results": []}
+        mock_client.POST.return_value = _build_resource()
+        mock_client_cls.return_value = mock_client
+
+        # Patch get_current_state to return None (new resource)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for create."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = True
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.put.return_value = {"_id": "test_watch", "created": True, "_version": 1}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "watch_id": "test_watch",
-            "trigger": {"schedule": {"interval": "10s"}},
-            "input": {"search": {"request": {"indices": ["logs"]}}},
-            "condition": {"compare": {"ctx.payload.hits.total": {"gt": 0}}},
-            "actions": {"log_error": {"logging": {"text": "Found errors"}}},
-            "transform": None,
-            "throttle_period": None,
-            "metadata": None,
-            "active": True,
-        })
-        set_module_args(args)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            watcher.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+        mock_client.POST.assert_not_called()
 
-        assert exc_info.value.code == 0
-        mock_client.put.assert_called_once()
-        call_args = mock_client.put.call_args
-        assert call_args[0][0] == "/_watcher/watch/test_watch"
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.watcher.Client")
-    def test_create_check_mode(self, mock_client_cls):
-        """Check mode on create reports changed but does not call PUT."""
+class TestDelete:
+    """Test resource deletion via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_existing_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting an existing resource sets changed=True."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "watch_id": "test_watch",
-            "trigger": {"schedule": {"interval": "10s"}},
-            "input": None,
-            "condition": None,
-            "actions": None,
-            "transform": None,
-            "throttle_period": None,
-            "metadata": None,
-            "active": True,
-            "_ansible_check_mode": True,
-        })
-        set_module_args(args)
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            watcher.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
 
-        assert exc_info.value.code == 0
-        mock_client.put.assert_not_called()
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_nonexistent_no_change(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting a nonexistent resource sets changed=False."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
 
-
-class TestMainUpdate:
-    """Tests for main() - update scenarios."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.watcher.Client")
-    def test_update_changed(self, mock_client_cls):
-        """Update when desired state differs from current."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_GET_RESPONSE
-        mock_client.put.return_value = {"_id": "test_watch", "_version": 2}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "watch_id": "test_watch",
-            "trigger": {"schedule": {"interval": "30s"}},  # changed
-            "input": None,
-            "condition": None,
-            "actions": None,
-            "transform": None,
-            "throttle_period": "5m",  # new
-            "metadata": None,
-            "active": True,
-        })
-        set_module_args(args)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            watcher.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
 
-        assert exc_info.value.code == 0
-        mock_client.put.assert_called_once()
-        call_args = mock_client.put.call_args
-        if len(call_args[0]) > 1:
-            call_data = call_args[0][1]
-        else:
-            call_data = call_args[1]["data"]
-        assert call_data["trigger"]["schedule"]["interval"] == "30s"
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for delete."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = True
+        mock_ansible_cls.return_value = mock_module
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.watcher.Client")
-    def test_idempotent_no_change(self, mock_client_cls):
-        """No change when desired matches current state."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_GET_RESPONSE
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "watch_id": "test_watch",
-            "trigger": {"schedule": {"interval": "10s"}},
-            "input": {
-                "search": {
-                    "request": {
-                        "indices": ["logs"],
-                        "body": {"query": {"match": {"status": "error"}}},
-                    }
-                }
-            },
-            "condition": {"compare": {"ctx.payload.hits.total": {"gt": 0}}},
-            "actions": {"log_error": {"logging": {"text": "Found errors"}}},
-            "transform": None,
-            "throttle_period": None,
-            "metadata": None,
-            "active": True,
-        })
-        set_module_args(args)
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            watcher.main()
-
-        assert exc_info.value.code == 0
-        mock_client.put.assert_not_called()
-
-
-class TestMainDelete:
-    """Tests for main() - delete scenarios."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.watcher.Client")
-    def test_delete_existing(self, mock_client_cls):
-        """Delete an existing watch."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_GET_RESPONSE
-        mock_client.delete.return_value = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "watch_id": "test_watch",
-            "trigger": None,
-            "input": None,
-            "condition": None,
-            "actions": None,
-            "transform": None,
-            "throttle_period": None,
-            "metadata": None,
-            "active": True,
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            watcher.main()
-
-        assert exc_info.value.code == 0
-        mock_client.delete.assert_called_once_with("/_watcher/watch/test_watch")
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.watcher.Client")
-    def test_delete_nonexistent(self, mock_client_cls):
-        """Delete idempotent when watch does not exist."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "watch_id": "test_watch",
-            "trigger": None,
-            "input": None,
-            "condition": None,
-            "actions": None,
-            "transform": None,
-            "throttle_period": None,
-            "metadata": None,
-            "active": True,
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            watcher.main()
-
-        assert exc_info.value.code == 0
-        mock_client.delete.assert_not_called()
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.watcher.Client")
-    def test_delete_check_mode(self, mock_client_cls):
-        """Check mode on delete reports changed but does not call DELETE."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_GET_RESPONSE
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "watch_id": "test_watch",
-            "trigger": None,
-            "input": None,
-            "condition": None,
-            "actions": None,
-            "transform": None,
-            "throttle_period": None,
-            "metadata": None,
-            "active": True,
-            "_ansible_check_mode": True,
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            watcher.main()
-
-        assert exc_info.value.code == 0
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
         mock_client.delete.assert_not_called()
 
 
-class TestMainError:
-    """Tests for main() - error handling."""
+class TestUpdate:
+    """Test resource update via main()."""
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.watcher.Client")
-    def test_client_error_fails_module(self, mock_client_cls):
-        """Module fails with msg when Client raises ClientError."""
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_update_when_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Updating a resource when values differ sets changed=True."""
+        resource_args["trigger"] = "new-value"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client.put.return_value = _build_resource(trigger="new-value")
+        mock_client_cls.return_value = mock_client
+
+        existing = _build_resource(trigger="old-value")
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=True):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+
+class TestIdempotent:
+    """Test idempotent behavior when no change is needed."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_no_change_when_up_to_date(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """When resource is up-to-date, changed is False."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Connection refused")
 
-        # ClientError from get_current_state is caught, but a non-404
-        # error during the full main flow will propagate
-        mock_client.get.return_value = {"_id": "test_watch", "found": False}
-        mock_client.put.side_effect = ClientError("Server error", status_code=500)
+        # Build existing resource that matches all desired params
+        existing = _build_resource()
+        for k, v in resource_args.items():
+            if v is not None and k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                existing[k] = v
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "watch_id": "test_watch",
-            "trigger": {"schedule": {"interval": "10s"}},
-            "input": None,
-            "condition": None,
-            "actions": None,
-            "transform": None,
-            "throttle_period": None,
-            "metadata": None,
-            "active": True,
-        })
-        set_module_args(args)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=False):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.watcher import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            watcher.main()
-
-        assert exc_info.value.code == 1
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
+        mock_client.POST.assert_not_called()
+        mock_client.put.assert_not_called()

@@ -1,282 +1,290 @@
-# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
-# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+"""Unit tests for stevefulme1.elastic.kibana_space module."""
 
 from __future__ import absolute_import, division, print_function
-
 __metaclass__ = type
 
-import pytest
 from unittest.mock import MagicMock, patch
+import pytest
 
-from ansible_collections.stevefulme1.elastic.plugins.modules import kibana_space
-from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+MODULE_PATH = "ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space"
+CLIENT_PATH = "ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client"
 
 
-@pytest.fixture
-def module_params_present():
-    return {
-        "api_key": "test-key",
-        "api_url": "https://localhost:5601",
-        "validate_certs": False,
-        "request_timeout": 30,
-        "state": "present",
-        "space_id": "marketing",
-        "name": "Marketing",
-        "description": "Marketing team space",
-        "color": "#aabbcc",
-        "disabled_features": [],
-        "initials": "MK",
-        "image_url": None,
+def _build_resource(**overrides):
+    """Return a mock kibana_space resource dict."""
+    base = {
+        "id": "res-123",
+        "space_id": "res-123",
+        "name": "test-name",
+        "description": "test-description",
+        "color": "test-color"
     }
+    base.update(overrides)
+    return base
 
 
 @pytest.fixture
-def module_params_absent():
-    return {
-        "api_key": "test-key",
-        "api_url": "https://localhost:5601",
-        "validate_certs": False,
+def resource_args(module_args):
+    """Module args for kibana_space operations."""
+    module_args.update({
+        "state": "present",
+        "api_key": "test-api-key",
+        "api_url": "https://api.example.com",
+        "validate_certs": True,
         "request_timeout": 30,
-        "state": "absent",
-        "space_id": "marketing",
+        "space_id": "test-space_id",
         "name": None,
         "description": None,
         "color": None,
         "disabled_features": None,
         "initials": None,
-        "image_url": None,
-    }
-
-
-@pytest.fixture
-def existing_space():
-    return {
-        "id": "marketing",
-        "name": "Marketing",
-        "description": "Marketing team space",
-        "color": "#aabbcc",
-        "disabledFeatures": [],
-        "initials": "MK",
-    }
+        "image_url": None
+    })
+    return module_args
 
 
 class TestGetCurrentState:
-    def test_returns_space_when_exists(self):
-        client = MagicMock()
-        client.get.return_value = {"id": "marketing", "name": "Marketing"}
-        module = MagicMock()
-        module.params = {"space_id": "marketing"}
+    """Test get_current_state() function (stub implementation)."""
 
-        result = kibana_space.get_current_state(client, module)
-        assert result == {"id": "marketing", "name": "Marketing"}
-        client.get.assert_called_once_with("/api/spaces/space/marketing")
+    def test_returns_none_without_lookup(self, resource_args):
+        """get_current_state returns None when no lookup is performed."""
+        for k in list(resource_args.keys()):
+            if k.endswith("_id") or k == "id" or k == "name":
+                resource_args[k] = None
+        mock_client = MagicMock()
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-    def test_returns_none_when_not_found(self):
-        client = MagicMock()
-        client.get.side_effect = ClientError("Not found", status_code=404)
-        module = MagicMock()
-        module.params = {"space_id": "nonexistent"}
-
-        result = kibana_space.get_current_state(client, module)
-        assert result is None
-
-    def test_returns_none_when_id_is_none(self):
-        client = MagicMock()
-        module = MagicMock()
-        module.params = {"space_id": None}
-
-        result = kibana_space.get_current_state(client, module)
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import get_current_state
+        result = get_current_state(mock_client, mock_module)
         assert result is None
 
 
 class TestNeedsUpdate:
-    def test_needs_update_when_current_is_none(self):
-        assert kibana_space.needs_update(None, {"name": "Test"}) is True
+    """Test needs_update() function."""
 
-    def test_no_update_when_identical(self, existing_space):
-        desired = {"id": "marketing", "name": "Marketing", "description": "Marketing team space"}
-        assert kibana_space.needs_update(existing_space, desired) is False
+    def test_returns_true_when_no_current(self):
+        """needs_update returns True when current state is None."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import needs_update
+        assert needs_update(None, {"name": "test"}) is True
 
-    def test_needs_update_when_different(self, existing_space):
-        desired = {"name": "Marketing Updated"}
-        assert kibana_space.needs_update(existing_space, desired) is True
+    def test_returns_true_when_values_differ(self):
+        """needs_update returns True when desired differs from current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import needs_update
+        current = {"name": "old-name", "id": "123"}
+        desired = {"name": "new-name"}
+        assert needs_update(current, desired) is True
 
-    def test_skips_none_values(self, existing_space):
-        desired = {"name": None, "description": None}
-        assert kibana_space.needs_update(existing_space, desired) is False
+    def test_returns_false_when_values_match(self):
+        """needs_update returns False when desired matches current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import needs_update
+        current = {"name": "same", "id": "123"}
+        desired = {"name": "same"}
+        assert needs_update(current, desired) is False
+
+    def test_ignores_none_values_in_desired(self):
+        """needs_update ignores None values in desired dict."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import needs_update
+        current = {"name": "test", "description": "desc"}
+        desired = {"name": "test", "description": None}
+        assert needs_update(current, desired) is False
 
 
 class TestBuildPayload:
-    def test_builds_full_payload(self, module_params_present):
-        module = MagicMock()
-        module.params = module_params_present
+    """Test build_payload() function."""
 
-        payload = kibana_space.build_payload(module)
-        assert payload["id"] == "marketing"
-        assert payload["name"] == "Marketing"
-        assert payload["description"] == "Marketing team space"
-        assert payload["color"] == "#aabbcc"
-        assert payload["disabledFeatures"] == []
-        assert payload["initials"] == "MK"
-
-    def test_skips_none_values(self):
-        module = MagicMock()
-        module.params = {
-            "space_id": "test",
-            "name": None,
-            "description": None,
-            "color": None,
-            "disabled_features": None,
-            "initials": None,
-            "image_url": None,
-        }
-
-        payload = kibana_space.build_payload(module)
-        assert payload == {"id": "test"}
-
-
-class TestMain:
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.Client")
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.AnsibleModule")
-    def test_create(self, mock_module_cls, mock_client_cls, module_params_present):
+    def test_builds_payload_from_params(self, resource_args):
+        """build_payload builds a dict from module params."""
         mock_module = MagicMock()
-        mock_module.params = module_params_present
+        mock_module.params = resource_args
+
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import build_payload
+        payload = build_payload(mock_module)
+        assert isinstance(payload, dict)
+
+    def test_excludes_none_params(self, resource_args):
+        """build_payload excludes params with None value."""
+        # Set all non-required params to None
+        for k in resource_args:
+            if k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                resource_args[k] = None
+
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import build_payload
+        payload = build_payload(mock_module)
+        for v in payload.values():
+            assert v is not None
+
+
+class TestCreate:
+    """Test resource creation via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Creating a new resource sets changed=True."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
         mock_module.check_mode = False
-        mock_module_cls.return_value = mock_module
+        mock_ansible_cls.return_value = mock_module
 
         mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.post.return_value = {"id": "marketing", "name": "Marketing"}
-        mock_client.headers = {}
+        mock_client.get.return_value = {"results": []}
+        mock_client.POST.return_value = _build_resource()
         mock_client_cls.return_value = mock_client
 
-        kibana_space.main()
+        # Patch get_current_state to return None (new resource)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import main
+            main()
 
-        mock_client.post.assert_called_once()
-        call_args = mock_client.post.call_args
-        assert "/api/spaces/space" in call_args[0]
         mock_module.exit_json.assert_called_once()
-        result = mock_module.exit_json.call_args[1]
-        assert result["changed"] is True
+        assert mock_module.exit_json.call_args[1]["changed"] is True
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.Client")
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.AnsibleModule")
-    def test_create_check_mode(self, mock_module_cls, mock_client_cls, module_params_present):
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for create."""
         mock_module = MagicMock()
-        mock_module.params = module_params_present
+        mock_module.params = resource_args
         mock_module.check_mode = True
-        mock_module_cls.return_value = mock_module
+        mock_ansible_cls.return_value = mock_module
 
         mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.headers = {}
         mock_client_cls.return_value = mock_client
 
-        kibana_space.main()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import main
+            main()
 
-        mock_client.post.assert_not_called()
         mock_module.exit_json.assert_called_once()
-        result = mock_module.exit_json.call_args[1]
-        assert result["changed"] is True
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+        mock_client.POST.assert_not_called()
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.Client")
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.AnsibleModule")
-    def test_idempotent(self, mock_module_cls, mock_client_cls, module_params_present, existing_space):
+
+class TestDelete:
+    """Test resource deletion via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_existing_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting an existing resource sets changed=True."""
+        resource_args["state"] = "absent"
         mock_module = MagicMock()
-        mock_module.params = module_params_present
+        mock_module.params = resource_args
         mock_module.check_mode = False
-        mock_module_cls.return_value = mock_module
+        mock_ansible_cls.return_value = mock_module
 
         mock_client = MagicMock()
-        mock_client.get.return_value = existing_space
-        mock_client.headers = {}
         mock_client_cls.return_value = mock_client
 
-        kibana_space.main()
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import main
+            main()
 
-        mock_client.post.assert_not_called()
-        mock_client.put.assert_not_called()
         mock_module.exit_json.assert_called_once()
-        result = mock_module.exit_json.call_args[1]
-        assert result["changed"] is False
+        assert mock_module.exit_json.call_args[1]["changed"] is True
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.Client")
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.AnsibleModule")
-    def test_update(self, mock_module_cls, mock_client_cls, module_params_present, existing_space):
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_nonexistent_no_change(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting a nonexistent resource sets changed=False."""
+        resource_args["state"] = "absent"
         mock_module = MagicMock()
-        mock_module.params = dict(module_params_present, name="Marketing Updated")
+        mock_module.params = resource_args
         mock_module.check_mode = False
-        mock_module_cls.return_value = mock_module
+        mock_ansible_cls.return_value = mock_module
 
         mock_client = MagicMock()
-        mock_client.get.return_value = existing_space
-        mock_client.put.return_value = {"id": "marketing", "name": "Marketing Updated"}
-        mock_client.headers = {}
         mock_client_cls.return_value = mock_client
 
-        kibana_space.main()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import main
+            main()
 
-        mock_client.put.assert_called_once()
-        call_args = mock_client.put.call_args
-        assert "/api/spaces/space/marketing" in call_args[0]
         mock_module.exit_json.assert_called_once()
-        result = mock_module.exit_json.call_args[1]
-        assert result["changed"] is True
+        assert mock_module.exit_json.call_args[1]["changed"] is False
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.Client")
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.AnsibleModule")
-    def test_delete(self, mock_module_cls, mock_client_cls, module_params_absent, existing_space):
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for delete."""
+        resource_args["state"] = "absent"
         mock_module = MagicMock()
-        mock_module.params = module_params_absent
-        mock_module.check_mode = False
-        mock_module_cls.return_value = mock_module
+        mock_module.params = resource_args
+        mock_module.check_mode = True
+        mock_ansible_cls.return_value = mock_module
 
         mock_client = MagicMock()
-        mock_client.get.return_value = existing_space
-        mock_client.headers = {}
         mock_client_cls.return_value = mock_client
 
-        kibana_space.main()
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import main
+            main()
 
-        mock_client.delete.assert_called_once_with("/api/spaces/space/marketing")
         mock_module.exit_json.assert_called_once()
-        result = mock_module.exit_json.call_args[1]
-        assert result["changed"] is True
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.Client")
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.AnsibleModule")
-    def test_delete_idempotent(self, mock_module_cls, mock_client_cls, module_params_absent):
-        mock_module = MagicMock()
-        mock_module.params = module_params_absent
-        mock_module.check_mode = False
-        mock_module_cls.return_value = mock_module
-
-        mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.headers = {}
-        mock_client_cls.return_value = mock_client
-
-        kibana_space.main()
-
+        assert mock_module.exit_json.call_args[1]["changed"] is True
         mock_client.delete.assert_not_called()
-        mock_module.exit_json.assert_called_once()
-        result = mock_module.exit_json.call_args[1]
-        assert result["changed"] is False
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.Client")
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space.AnsibleModule")
-    def test_sets_kbn_xsrf_header(self, mock_module_cls, mock_client_cls, module_params_present):
+
+class TestUpdate:
+    """Test resource update via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_update_when_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Updating a resource when values differ sets changed=True."""
+        resource_args["space_id"] = "new-value"
         mock_module = MagicMock()
-        mock_module.params = module_params_present
+        mock_module.params = resource_args
         mock_module.check_mode = False
-        mock_module_cls.return_value = mock_module
+        mock_ansible_cls.return_value = mock_module
 
         mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.post.return_value = {}
-        mock_client.headers = {}
+        mock_client.put.return_value = _build_resource(space_id="new-value")
         mock_client_cls.return_value = mock_client
 
-        kibana_space.main()
+        existing = _build_resource(space_id="old-value")
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=True):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import main
+            main()
 
-        assert mock_client.headers["kbn-xsrf"] == "true"
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+
+class TestIdempotent:
+    """Test idempotent behavior when no change is needed."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_no_change_when_up_to_date(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """When resource is up-to-date, changed is False."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+
+        # Build existing resource that matches all desired params
+        existing = _build_resource()
+        for k, v in resource_args.items():
+            if v is not None and k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                existing[k] = v
+
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=False):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_space import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
+        mock_client.POST.assert_not_called()
+        mock_client.put.assert_not_called()

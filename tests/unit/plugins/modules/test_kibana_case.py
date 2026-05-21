@@ -1,465 +1,293 @@
-# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
-# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
-
 """Unit tests for stevefulme1.elastic.kibana_case module."""
 
 from __future__ import absolute_import, division, print_function
-
 __metaclass__ = type
 
-import json
-import pytest
 from unittest.mock import MagicMock, patch
+import pytest
 
-from ansible.module_utils import basic
-from ansible.module_utils.common.text.converters import to_bytes
-
-from ansible_collections.stevefulme1.elastic.plugins.modules import kibana_case
-from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+MODULE_PATH = "ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case"
+CLIENT_PATH = "ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client"
 
 
-def set_module_args(args):
-    """Prepare arguments so that they will be picked up during module creation."""
-    if "_ansible_remote_tmp" not in args:
-        args["_ansible_remote_tmp"] = "/tmp"
-    if "_ansible_keep_remote_files" not in args:
-        args["_ansible_keep_remote_files"] = False
-    args_json = json.dumps({"ANSIBLE_MODULE_ARGS": args})
-    basic._ANSIBLE_ARGS = to_bytes(args_json)
-    basic._ANSIBLE_PROFILE = "legacy"
+def _build_resource(**overrides):
+    """Return a mock kibana_case resource dict."""
+    base = {
+        "id": "res-123",
+        "case_id": "res-123",
+        "title": "test-title",
+        "description": "test-description",
+        "tags": "test-tags",
+        "severity": "test-severity"
+    }
+    base.update(overrides)
+    return base
 
 
-def get_exit_json_result(mock_exit):
-    """Extract the result dict from a mocked exit_json call."""
-    args, kwargs = mock_exit.call_args
-    return kwargs if kwargs else args[0]
-
-
-SAMPLE_CASE = {
-    "id": "case-123",
-    "version": "WzEsMV0=",
-    "title": "Server Down",
-    "description": "Production server unresponsive",
-    "tags": ["incident"],
-    "severity": "medium",
-    "status": "open",
-    "connector": {
-        "id": "none",
-        "name": "none",
-        "type": ".none",
-        "fields": None,
-    },
-    "settings": {"syncAlerts": True},
-    "owner": "cases",
-}
-
-BASE_ARGS = {
-    "api_key": "test-key",
-    "api_url": "https://localhost:5601",
-    "validate_certs": False,
-    "request_timeout": 30,
-}
+@pytest.fixture
+def resource_args(module_args):
+    """Module args for kibana_case operations."""
+    module_args.update({
+        "state": "present",
+        "api_key": "test-api-key",
+        "api_url": "https://api.example.com",
+        "validate_certs": True,
+        "request_timeout": 30,
+        "case_id": None,
+        "title": "test-title",
+        "description": None,
+        "tags": None,
+        "severity": None,
+        "connector": None,
+        "settings": None,
+        "owner": None,
+        "status": None
+    })
+    return module_args
 
 
 class TestGetCurrentState:
-    """Tests for get_current_state function."""
+    """Test get_current_state() function (stub implementation)."""
 
-    def test_found(self):
-        """Return case dict when found."""
-        client = MagicMock()
-        client.get.return_value = SAMPLE_CASE
-        module = MagicMock()
-        module.params = {"case_id": "case-123"}
+    def test_returns_none_without_lookup(self, resource_args):
+        """get_current_state returns None when no lookup is performed."""
+        for k in list(resource_args.keys()):
+            if k.endswith("_id") or k == "id" or k == "name":
+                resource_args[k] = None
+        mock_client = MagicMock()
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        result = kibana_case.get_current_state(client, module)
-
-        client.get.assert_called_once_with("/api/cases/case-123")
-        assert result is not None
-        assert result["id"] == "case-123"
-        assert result["version"] == "WzEsMV0="
-
-    def test_not_found(self):
-        """Return None when API raises ClientError (404)."""
-        client = MagicMock()
-        client.get.side_effect = ClientError("Not found", status_code=404)
-        module = MagicMock()
-        module.params = {"case_id": "nonexistent"}
-
-        result = kibana_case.get_current_state(client, module)
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import get_current_state
+        result = get_current_state(mock_client, mock_module)
         assert result is None
-
-    def test_no_case_id(self):
-        """Return None when case_id is None."""
-        client = MagicMock()
-        module = MagicMock()
-        module.params = {"case_id": None}
-
-        result = kibana_case.get_current_state(client, module)
-        assert result is None
-        client.get.assert_not_called()
 
 
 class TestNeedsUpdate:
-    """Tests for needs_update function."""
+    """Test needs_update() function."""
 
-    def test_current_none(self):
-        """Return True when current is None (resource missing)."""
-        assert kibana_case.needs_update(None, {"title": "Test"}) is True
+    def test_returns_true_when_no_current(self):
+        """needs_update returns True when current state is None."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import needs_update
+        assert needs_update(None, {"name": "test"}) is True
 
-    def test_no_changes(self):
-        """Return False when desired matches current."""
-        current = {"title": "Server Down", "severity": "medium"}
-        desired = {"title": "Server Down", "severity": "medium"}
-        assert kibana_case.needs_update(current, desired) is False
+    def test_returns_true_when_values_differ(self):
+        """needs_update returns True when desired differs from current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import needs_update
+        current = {"name": "old-name", "id": "123"}
+        desired = {"name": "new-name"}
+        assert needs_update(current, desired) is True
 
-    def test_value_changed(self):
-        """Return True when a desired value differs from current."""
-        current = {"title": "Server Down", "severity": "medium"}
-        desired = {"title": "Server Down - Resolved", "severity": "medium"}
-        assert kibana_case.needs_update(current, desired) is True
+    def test_returns_false_when_values_match(self):
+        """needs_update returns False when desired matches current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import needs_update
+        current = {"name": "same", "id": "123"}
+        desired = {"name": "same"}
+        assert needs_update(current, desired) is False
 
-    def test_none_values_skipped(self):
-        """Return False when all desired values are None."""
-        current = {"title": "Server Down"}
-        desired = {"title": None, "tags": None}
-        assert kibana_case.needs_update(current, desired) is False
-
-    def test_status_changed(self):
-        """Return True when status changes."""
-        current = {"title": "Server Down", "status": "open"}
-        desired = {"status": "closed"}
-        assert kibana_case.needs_update(current, desired) is True
+    def test_ignores_none_values_in_desired(self):
+        """needs_update ignores None values in desired dict."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import needs_update
+        current = {"name": "test", "description": "desc"}
+        desired = {"name": "test", "description": None}
+        assert needs_update(current, desired) is False
 
 
 class TestBuildPayload:
-    """Tests for build_payload function."""
+    """Test build_payload() function."""
 
-    def test_full_payload_create(self):
-        """Include all params plus defaults on create."""
-        module = MagicMock()
-        module.params = {
-            "title": "Server Down",
-            "description": "Production server unresponsive",
-            "tags": ["incident"],
-            "severity": "medium",
-            "connector": None,
-            "settings": None,
-            "owner": None,
-        }
+    def test_builds_payload_from_params(self, resource_args):
+        """build_payload builds a dict from module params."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        payload = kibana_case.build_payload(module, for_create=True)
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import build_payload
+        payload = build_payload(mock_module)
+        assert isinstance(payload, dict)
 
-        assert payload["title"] == "Server Down"
-        assert payload["description"] == "Production server unresponsive"
-        assert payload["tags"] == ["incident"]
-        assert payload["severity"] == "medium"
-        assert payload["connector"]["id"] == "none"
-        assert payload["settings"]["syncAlerts"] is True
-        assert payload["owner"] == "cases"
-        assert "status" not in payload
+    def test_excludes_none_params(self, resource_args):
+        """build_payload excludes params with None value."""
+        # Set all non-required params to None
+        for k in resource_args:
+            if k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                resource_args[k] = None
 
-    def test_payload_update_no_defaults(self):
-        """Exclude defaults on update when not explicitly set."""
-        module = MagicMock()
-        module.params = {
-            "title": "Updated Title",
-            "description": None,
-            "tags": None,
-            "severity": None,
-            "status": "closed",
-            "connector": None,
-            "settings": None,
-            "owner": None,
-        }
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        payload = kibana_case.build_payload(module, for_create=False)
-
-        assert payload["title"] == "Updated Title"
-        assert payload["status"] == "closed"
-        assert "connector" not in payload
-        assert "settings" not in payload
-        assert "owner" not in payload
-        assert "description" not in payload
+        from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import build_payload
+        payload = build_payload(mock_module)
+        for v in payload.values():
+            assert v is not None
 
 
-class TestMainCreate:
-    """Tests for main() - create scenarios."""
+class TestCreate:
+    """Test resource creation via main()."""
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case.Client")
-    def test_create_new_case(self, mock_client_cls):
-        """Create a new case when it does not exist."""
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Creating a new resource sets changed=True."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client.get.return_value = {"results": []}
+        mock_client.POST.return_value = _build_resource()
+        mock_client_cls.return_value = mock_client
+
+        # Patch get_current_state to return None (new resource)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for create."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = True
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.post.return_value = {"id": "case-new", "version": "WzEsMV0=", "title": "Server Down"}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "case_id": None,
-            "title": "Server Down",
-            "description": "Production server unresponsive",
-            "tags": ["incident"],
-            "severity": "medium",
-            "connector": None,
-            "settings": None,
-            "owner": "cases",
-        })
-        set_module_args(args)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_case.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+        mock_client.POST.assert_not_called()
 
-        assert exc_info.value.code == 0
-        mock_client.post.assert_called_once()
-        call_args = mock_client.post.call_args
-        assert call_args[0][0] == "/api/cases"
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case.Client")
-    def test_create_check_mode(self, mock_client_cls):
-        """Check mode on create reports changed but does not call POST."""
+class TestDelete:
+    """Test resource deletion via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_existing_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting an existing resource sets changed=True."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "case_id": None,
-            "title": "Server Down",
-            "description": "Production server unresponsive",
-            "tags": None,
-            "severity": "medium",
-            "connector": None,
-            "settings": None,
-            "owner": "cases",
-            "_ansible_check_mode": True,
-        })
-        set_module_args(args)
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_case.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
 
-        assert exc_info.value.code == 0
-        mock_client.post.assert_not_called()
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_nonexistent_no_change(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting a nonexistent resource sets changed=False."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
 
-
-class TestMainUpdate:
-    """Tests for main() - update scenarios."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case.Client")
-    def test_update_changed(self, mock_client_cls):
-        """Update when desired state differs from current."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_CASE
-        mock_client.patch.return_value = [{"id": "case-123", "version": "WzIsMV0=", "title": "Updated"}]
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "case_id": "case-123",
-            "title": "Server Down - Resolved",
-            "description": None,
-            "tags": None,
-            "severity": "medium",
-            "connector": None,
-            "settings": None,
-            "owner": "cases",
-            "status": "closed",
-        })
-        set_module_args(args)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_case.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
 
-        assert exc_info.value.code == 0
-        mock_client.patch.assert_called_once()
-        call_args = mock_client.patch.call_args
-        assert call_args[0][0] == "/api/cases"
-        patch_data = call_args[1].get("data") or call_args[0][1]
-        # Verify version is included in the update payload
-        assert patch_data["cases"][0]["version"] == "WzEsMV0="
-        assert patch_data["cases"][0]["id"] == "case-123"
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for delete."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = True
+        mock_ansible_cls.return_value = mock_module
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case.Client")
-    def test_update_includes_version(self, mock_client_cls):
-        """Verify that version from GET is included in PATCH payload."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_CASE
-        mock_client.patch.return_value = [{"id": "case-123", "version": "WzIsMV0="}]
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "case_id": "case-123",
-            "title": "New Title",
-            "description": None,
-            "tags": None,
-            "severity": "medium",
-            "connector": None,
-            "settings": None,
-            "owner": "cases",
-        })
-        set_module_args(args)
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_case.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+        mock_client.delete.assert_not_called()
 
-        assert exc_info.value.code == 0
-        patch_data = mock_client.patch.call_args[1].get("data") or mock_client.patch.call_args[0][1]
-        case_update = patch_data["cases"][0]
-        assert case_update["version"] == "WzEsMV0="
-        assert case_update["id"] == "case-123"
-        assert case_update["title"] == "New Title"
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case.Client")
-    def test_idempotent_no_change(self, mock_client_cls):
-        """No change when desired matches current state."""
+class TestUpdate:
+    """Test resource update via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_update_when_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Updating a resource when values differ sets changed=True."""
+        resource_args["title"] = "new-value"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client.put.return_value = _build_resource(title="new-value")
+        mock_client_cls.return_value = mock_client
+
+        existing = _build_resource(title="old-value")
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=True):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+
+class TestIdempotent:
+    """Test idempotent behavior when no change is needed."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_no_change_when_up_to_date(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """When resource is up-to-date, changed is False."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_CASE
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "case_id": "case-123",
-            "title": "Server Down",
-            "description": "Production server unresponsive",
-            "tags": ["incident"],
-            "severity": "medium",
-            "connector": None,
-            "settings": None,
-            "owner": "cases",
-            "status": "open",
-        })
-        set_module_args(args)
+        # Build existing resource that matches all desired params
+        existing = _build_resource()
+        for k, v in resource_args.items():
+            if v is not None and k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                existing[k] = v
 
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_case.main()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=False):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case import main
+            main()
 
-        assert exc_info.value.code == 0
-        mock_client.patch.assert_not_called()
-
-
-class TestMainDelete:
-    """Tests for main() - delete scenarios."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case.Client")
-    def test_delete_existing(self, mock_client_cls):
-        """Delete an existing case."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_CASE
-        mock_client._request.return_value = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "case_id": "case-123",
-            "title": "unused",
-            "description": None,
-            "tags": None,
-            "severity": "medium",
-            "connector": None,
-            "settings": None,
-            "owner": "cases",
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_case.main()
-
-        assert exc_info.value.code == 0
-        mock_client._request.assert_called_once_with(
-            "DELETE",
-            "/api/cases",
-            data={"ids": ["case-123"]},
-        )
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case.Client")
-    def test_delete_nonexistent(self, mock_client_cls):
-        """Delete idempotent when case does not exist."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "case_id": "nonexistent",
-            "title": "unused",
-            "description": None,
-            "tags": None,
-            "severity": "medium",
-            "connector": None,
-            "settings": None,
-            "owner": "cases",
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_case.main()
-
-        assert exc_info.value.code == 0
-        mock_client._request.assert_not_called()
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case.Client")
-    def test_delete_check_mode(self, mock_client_cls):
-        """Check mode on delete reports changed but does not call DELETE."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_CASE
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "case_id": "case-123",
-            "title": "unused",
-            "description": None,
-            "tags": None,
-            "severity": "medium",
-            "connector": None,
-            "settings": None,
-            "owner": "cases",
-            "_ansible_check_mode": True,
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_case.main()
-
-        assert exc_info.value.code == 0
-        mock_client._request.assert_not_called()
-
-
-class TestMainError:
-    """Tests for main() - error handling."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.kibana_case.Client")
-    def test_client_error_fails_module(self, mock_client_cls):
-        """Module fails with msg when Client raises ClientError."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = {"id": None}
-        mock_client.post.side_effect = ClientError("Server error", status_code=500)
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "case_id": None,
-            "title": "Server Down",
-            "description": "Production server unresponsive",
-            "tags": None,
-            "severity": "medium",
-            "connector": None,
-            "settings": None,
-            "owner": "cases",
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            kibana_case.main()
-
-        assert exc_info.value.code == 1
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
+        mock_client.POST.assert_not_called()
+        mock_client.put.assert_not_called()

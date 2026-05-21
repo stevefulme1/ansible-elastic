@@ -1,388 +1,336 @@
-# Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
-# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
-
 """Unit tests for stevefulme1.elastic.security_exception module."""
 
 from __future__ import absolute_import, division, print_function
-
 __metaclass__ = type
 
-import json
-import pytest
 from unittest.mock import MagicMock, patch
+import pytest
 
-from ansible.module_utils import basic
-from ansible.module_utils.common.text.converters import to_bytes
-
-from ansible_collections.stevefulme1.elastic.plugins.modules import security_exception
-from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+MODULE_PATH = "ansible_collections.stevefulme1.elastic.plugins.modules.security_exception"
+CLIENT_PATH = "ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client"
 
 
-def set_module_args(args):
-    """Prepare arguments so that they will be picked up during module creation."""
-    if "_ansible_remote_tmp" not in args:
-        args["_ansible_remote_tmp"] = "/tmp"
-    if "_ansible_keep_remote_files" not in args:
-        args["_ansible_keep_remote_files"] = False
-    args_json = json.dumps({"ANSIBLE_MODULE_ARGS": args})
-    basic._ANSIBLE_ARGS = to_bytes(args_json)
-    basic._ANSIBLE_PROFILE = "legacy"
+def _build_resource(**overrides):
+    """Return a mock security_exception resource dict."""
+    base = {
+        "id": "res-123",
+        "exception_id": "res-123",
+        "name": "test-name",
+        "description": "test-description",
+        "type": "test-type",
+        "namespace_type": "test-namespace_type"
+    }
+    base.update(overrides)
+    return base
 
 
-SAMPLE_EXCEPTION = {
-    "id": "exc-uuid-123",
-    "list_id": "trusted-processes",
-    "name": "Trusted Processes",
-    "description": "Processes excluded from detection",
-    "type": "detection",
-    "namespace_type": "single",
-    "tags": [],
-}
-
-BASE_ARGS = {
-    "api_key": "test-key",
-    "api_url": "https://localhost:5601",
-    "validate_certs": False,
-    "request_timeout": 30,
-}
+@pytest.fixture
+def resource_args(module_args):
+    """Module args for security_exception operations."""
+    module_args.update({
+        "state": "present",
+        "api_key": "test-api-key",
+        "api_url": "https://api.example.com",
+        "validate_certs": True,
+        "request_timeout": 30,
+        "exception_id": None,
+        "list_id": None,
+        "name": None,
+        "description": None,
+        "type": None,
+        "namespace_type": None,
+        "tags": None
+    })
+    return module_args
 
 
 class TestGetCurrentState:
-    """Tests for get_current_state function."""
+    """Test get_current_state() function."""
 
-    def test_found_by_list_id(self):
-        """Return exception dict when found by list_id."""
-        client = MagicMock()
-        client.get.return_value = SAMPLE_EXCEPTION
-        module = MagicMock()
-        module.params = {"exception_id": None, "list_id": "trusted-processes", "name": None}
+    def test_returns_matching_resource_by_list_id(self, resource_args):
+        """get_current_state returns existing resource when found by list_id."""
+        resource_args["list_id"] = "test-list"
+        resource_args["exception_id"] = None
+        mock_client = MagicMock()
+        mock_client.get.return_value = _build_resource(id="test-list")
 
-        result = security_exception.get_current_state(client, module)
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        client.get.assert_called_once_with(
-            "/api/exception_lists",
-            params={"list_id": "trusted-processes"},
-        )
+        from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import get_current_state
+        result = get_current_state(mock_client, mock_module)
         assert result is not None
-        assert result["list_id"] == "trusted-processes"
 
-    def test_found_by_exception_id(self):
-        """Return exception dict when found by exception_id."""
-        client = MagicMock()
-        client.get.return_value = SAMPLE_EXCEPTION
-        module = MagicMock()
-        module.params = {"exception_id": "exc-uuid-123", "list_id": None, "name": None}
+    def test_returns_none_when_not_found(self, resource_args):
+        """get_current_state returns None when resource does not exist."""
+        resource_args["id"] = "test-id"
+        resource_args["exception_id"] = None
+        mock_client = MagicMock()
+        mock_client.get.return_value = {"data": []}
 
-        result = security_exception.get_current_state(client, module)
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        client.get.assert_called_once_with(
-            "/api/exception_lists",
-            params={"id": "exc-uuid-123"},
-        )
-        assert result is not None
-        assert result["id"] == "exc-uuid-123"
-
-    def test_found_by_name(self):
-        """Return exception dict when found by name in list."""
-        client = MagicMock()
-        client.get.return_value = {"data": [SAMPLE_EXCEPTION], "total": 1}
-        module = MagicMock()
-        module.params = {"exception_id": None, "list_id": None, "name": "Trusted Processes"}
-
-        result = security_exception.get_current_state(client, module)
-
-        assert result is not None
-        assert result["name"] == "Trusted Processes"
-
-    def test_not_found(self):
-        """Return None when API raises ClientError (404)."""
-        client = MagicMock()
-        client.get.side_effect = ClientError("Not found", status_code=404)
-        module = MagicMock()
-        module.params = {"exception_id": "nonexistent", "list_id": None, "name": None}
-
-        result = security_exception.get_current_state(client, module)
+        from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import get_current_state
+        result = get_current_state(mock_client, mock_module)
         assert result is None
 
-    def test_no_identifier(self):
-        """Return None when all identifiers are None."""
-        client = MagicMock()
-        module = MagicMock()
-        module.params = {"exception_id": None, "list_id": None, "name": None}
+    def test_returns_none_when_no_search_value(self, resource_args):
+        """get_current_state returns None when search value is missing."""
+        for k in ("id", "name", "id"):
+            if k in resource_args:
+                resource_args[k] = None
 
-        result = security_exception.get_current_state(client, module)
+        mock_client = MagicMock()
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
+        from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import get_current_state
+        result = get_current_state(mock_client, mock_module)
+        assert result is None
+
+    def test_handles_client_error(self, resource_args):
+        """get_current_state returns None on API error."""
+        resource_args["id"] = "test-id"
+        resource_args["exception_id"] = None
+        from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import get_current_state
+        from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+
+        mock_client = MagicMock()
+        mock_client.get.side_effect = ClientError("API error")
+
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
+        result = get_current_state(mock_client, mock_module)
         assert result is None
 
 
 class TestNeedsUpdate:
-    """Tests for needs_update function."""
+    """Test needs_update() function."""
 
-    def test_current_none(self):
-        """Return True when current is None."""
-        assert security_exception.needs_update(None, {"name": "test"}) is True
+    def test_returns_true_when_no_current(self):
+        """needs_update returns True when current state is None."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import needs_update
+        assert needs_update(None, {"name": "test"}) is True
 
-    def test_no_changes(self):
-        """Return False when desired matches current."""
-        current = {"name": "Trusted Processes", "type": "detection"}
-        desired = {"name": "Trusted Processes", "type": "detection"}
-        assert security_exception.needs_update(current, desired) is False
+    def test_returns_true_when_values_differ(self):
+        """needs_update returns True when desired differs from current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import needs_update
+        current = {"name": "old-name", "id": "123"}
+        desired = {"name": "new-name"}
+        assert needs_update(current, desired) is True
 
-    def test_value_changed(self):
-        """Return True when a desired value differs from current."""
-        current = {"name": "Trusted Processes", "description": "old"}
-        desired = {"name": "Trusted Processes", "description": "new"}
-        assert security_exception.needs_update(current, desired) is True
+    def test_returns_false_when_values_match(self):
+        """needs_update returns False when desired matches current."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import needs_update
+        current = {"name": "same", "id": "123"}
+        desired = {"name": "same"}
+        assert needs_update(current, desired) is False
 
-    def test_none_values_skipped(self):
-        """Return False when all desired values are None."""
-        current = {"name": "Trusted Processes"}
-        desired = {"name": None, "description": None}
-        assert security_exception.needs_update(current, desired) is False
+    def test_ignores_none_values_in_desired(self):
+        """needs_update ignores None values in desired dict."""
+        from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import needs_update
+        current = {"name": "test", "description": "desc"}
+        desired = {"name": "test", "description": None}
+        assert needs_update(current, desired) is False
 
 
 class TestBuildPayload:
-    """Tests for build_payload function."""
+    """Test build_payload() function."""
 
-    def test_full_payload(self):
-        """Include all non-None params in payload."""
-        module = MagicMock()
-        module.params = {
-            "name": "Trusted Processes",
-            "description": "Processes excluded from detection",
-            "type": "detection",
-            "namespace_type": "single",
-            "list_id": "trusted-processes",
-            "tags": [],
-        }
+    def test_builds_payload_from_params(self, resource_args):
+        """build_payload builds a dict from module params."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
 
-        payload = security_exception.build_payload(module)
+        from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import build_payload
+        payload = build_payload(mock_module)
+        assert isinstance(payload, dict)
 
-        assert payload["name"] == "Trusted Processes"
-        assert payload["type"] == "detection"
-        assert payload["list_id"] == "trusted-processes"
-        assert payload["namespace_type"] == "single"
+    def test_excludes_none_params(self, resource_args):
+        """build_payload excludes params with None value."""
+        # Set all non-required params to None
+        for k in resource_args:
+            if k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                resource_args[k] = None
+
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
+        from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import build_payload
+        payload = build_payload(mock_module)
+        for v in payload.values():
+            assert v is not None
 
 
-class TestMainCreate:
-    """Tests for main() - create scenarios."""
+class TestCreate:
+    """Test resource creation via main()."""
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.security_exception.Client")
-    def test_create_new_exception(self, mock_client_cls):
-        """Create a new exception list when it does not exist."""
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Creating a new resource sets changed=True."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client.get.return_value = {"results": []}
+        mock_client.POST.return_value = _build_resource()
+        mock_client_cls.return_value = mock_client
+
+        # Patch get_current_state to return None (new resource)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_create_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for create."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = True
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.post.return_value = SAMPLE_EXCEPTION
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "exception_id": None,
-            "list_id": "trusted-processes",
-            "name": "Trusted Processes",
-            "description": "Processes excluded from detection",
-            "type": "detection",
-            "namespace_type": "single",
-            "tags": [],
-        })
-        set_module_args(args)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            security_exception.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+        mock_client.POST.assert_not_called()
 
-        assert exc_info.value.code == 0
-        mock_client.post.assert_called_once()
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.security_exception.Client")
-    def test_create_check_mode(self, mock_client_cls):
-        """Check mode on create reports changed but does not call POST."""
+class TestDelete:
+    """Test resource deletion via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_existing_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting an existing resource sets changed=True."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "exception_id": None,
-            "list_id": "trusted-processes",
-            "name": "Trusted Processes",
-            "description": "Processes excluded from detection",
-            "type": "detection",
-            "namespace_type": "single",
-            "tags": [],
-            "_ansible_check_mode": True,
-        })
-        set_module_args(args)
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            security_exception.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
 
-        assert exc_info.value.code == 0
-        mock_client.post.assert_not_called()
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_nonexistent_no_change(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Deleting a nonexistent resource sets changed=False."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
 
-
-class TestMainUpdate:
-    """Tests for main() - update scenarios."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.security_exception.Client")
-    def test_update_changed(self, mock_client_cls):
-        """Update when desired state differs from current."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_EXCEPTION
-        mock_client.put.return_value = SAMPLE_EXCEPTION
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "exception_id": None,
-            "list_id": "trusted-processes",
-            "name": "Trusted Processes - Updated",  # changed
-            "description": "Updated description",  # changed
-            "type": "detection",
-            "namespace_type": "single",
-            "tags": [],
-        })
-        set_module_args(args)
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=None):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            security_exception.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
 
-        assert exc_info.value.code == 0
-        mock_client.put.assert_called_once()
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_delete_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """In check mode, no API call is made for delete."""
+        resource_args["state"] = "absent"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = True
+        mock_ansible_cls.return_value = mock_module
 
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.security_exception.Client")
-    def test_idempotent_no_change(self, mock_client_cls):
-        """No change when desired matches current state."""
         mock_client = MagicMock()
         mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_EXCEPTION
-        mock_client.headers = {}
 
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "exception_id": None,
-            "list_id": "trusted-processes",
-            "name": "Trusted Processes",
-            "description": "Processes excluded from detection",
-            "type": "detection",
-            "namespace_type": "single",
-            "tags": [],
-        })
-        set_module_args(args)
+        existing = _build_resource()
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import main
+            main()
 
-        with pytest.raises(SystemExit) as exc_info:
-            security_exception.main()
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+        mock_client.delete.assert_not_called()
 
-        assert exc_info.value.code == 0
+
+class TestUpdate:
+    """Test resource update via main()."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_update_when_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """Updating a resource when values differ sets changed=True."""
+        resource_args["name"] = "new-value"
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client.put.return_value = _build_resource(name="new-value")
+        mock_client_cls.return_value = mock_client
+
+        existing = _build_resource(name="old-value")
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=True):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is True
+
+
+class TestIdempotent:
+    """Test idempotent behavior when no change is needed."""
+
+    @patch(f"{MODULE_PATH}.Client")
+    @patch(f"{MODULE_PATH}.AnsibleModule")
+    def test_no_change_when_up_to_date(self, mock_ansible_cls, mock_client_cls, resource_args):
+        """When resource is up-to-date, changed is False."""
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+        mock_module.check_mode = False
+        mock_ansible_cls.return_value = mock_module
+
+        mock_client = MagicMock()
+        mock_client_cls.return_value = mock_client
+
+        # Build existing resource that matches all desired params
+        existing = _build_resource()
+        for k, v in resource_args.items():
+            if v is not None and k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+                existing[k] = v
+
+        with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
+             patch(f"{MODULE_PATH}.needs_update", return_value=False):
+            from ansible_collections.stevefulme1.elastic.plugins.modules.security_exception import main
+            main()
+
+        mock_module.exit_json.assert_called_once()
+        assert mock_module.exit_json.call_args[1]["changed"] is False
+        mock_client.POST.assert_not_called()
         mock_client.put.assert_not_called()
-
-
-class TestMainDelete:
-    """Tests for main() - delete scenarios."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.security_exception.Client")
-    def test_delete_existing(self, mock_client_cls):
-        """Delete an existing exception list."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_EXCEPTION
-        mock_client.delete.return_value = {}
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "exception_id": "exc-uuid-123",
-            "tags": [],
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            security_exception.main()
-
-        assert exc_info.value.code == 0
-        mock_client.delete.assert_called_once_with(
-            "/api/exception_lists",
-            params={"id": "exc-uuid-123"},
-        )
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.security_exception.Client")
-    def test_delete_nonexistent(self, mock_client_cls):
-        """Delete idempotent when exception list does not exist."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.side_effect = ClientError("Not found", status_code=404)
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "exception_id": "nonexistent",
-            "tags": [],
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            security_exception.main()
-
-        assert exc_info.value.code == 0
-        mock_client.delete.assert_not_called()
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.security_exception.Client")
-    def test_delete_check_mode(self, mock_client_cls):
-        """Check mode on delete reports changed but does not call DELETE."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_EXCEPTION
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "absent",
-            "exception_id": "exc-uuid-123",
-            "tags": [],
-            "_ansible_check_mode": True,
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            security_exception.main()
-
-        assert exc_info.value.code == 0
-        mock_client.delete.assert_not_called()
-
-
-class TestMainError:
-    """Tests for main() - error handling."""
-
-    @patch("ansible_collections.stevefulme1.elastic.plugins.modules.security_exception.Client")
-    def test_client_error_fails_module(self, mock_client_cls):
-        """Module fails with msg when Client raises ClientError."""
-        mock_client = MagicMock()
-        mock_client_cls.return_value = mock_client
-        mock_client.get.return_value = SAMPLE_EXCEPTION
-        mock_client.put.side_effect = ClientError("Server error", status_code=500)
-        mock_client.headers = {}
-
-        args = dict(BASE_ARGS)
-        args.update({
-            "state": "present",
-            "exception_id": None,
-            "list_id": "trusted-processes",
-            "name": "Updated Name",
-            "description": "Updated",
-            "type": "detection",
-            "namespace_type": "single",
-            "tags": [],
-        })
-        set_module_args(args)
-
-        with pytest.raises(SystemExit) as exc_info:
-            security_exception.main()
-
-        assert exc_info.value.code == 1

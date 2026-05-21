@@ -1,0 +1,57 @@
+---
+# Example EDA rulebook: Elastic Alert Remediation
+#
+# Polls Kibana alerting rules and runs remediation playbooks
+# when specific alert conditions are detected.
+#
+# Usage:
+#   ansible-rulebook --rulebook elastic_alert_remediation.yml -i inventory.yml
+
+- name: Elastic Alert Remediation
+  hosts: all
+  sources:
+    - stevefulme1.elastic.elastic_alert:
+        api_url: "{{ lookup('env', 'KIBANA_URL') }}"
+        api_key: "{{ lookup('env', 'ELASTIC_API_KEY') }}"
+        interval: 30
+        severity_filter:
+          - critical
+          - high
+        validate_certs: true
+
+  rules:
+    - name: Restart service on high CPU alert
+      condition: event.elastic_alert.rule_name == "High CPU Usage"
+      action:
+        run_playbook:
+          name: remediate_high_cpu.yml
+          extra_vars:
+            alert_rule_id: "{{ event.elastic_alert.rule_id }}"
+            alert_status: "{{ event.elastic_alert.status }}"
+
+    - name: Expand disk on low disk space
+      condition: event.elastic_alert.rule_name == "Low Disk Space"
+      action:
+        run_playbook:
+          name: remediate_disk_space.yml
+          extra_vars:
+            alert_rule_id: "{{ event.elastic_alert.rule_id }}"
+
+    - name: Page on-call for error-state rules
+      condition: event.elastic_alert.status == "error"
+      action:
+        run_playbook:
+          name: escalate_to_oncall.yml
+          extra_vars:
+            rule_name: "{{ event.elastic_alert.rule_name }}"
+            error_message: "{{ event.elastic_alert.error_message }}"
+
+    - name: Log all fired alerts to ServiceNow
+      condition: event.elastic_alert.status == "active"
+      action:
+        run_playbook:
+          name: create_snow_incident.yml
+          extra_vars:
+            rule_id: "{{ event.elastic_alert.rule_id }}"
+            rule_name: "{{ event.elastic_alert.rule_name }}"
+            tags: "{{ event.elastic_alert.tags }}"

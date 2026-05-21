@@ -1,0 +1,153 @@
+---
+# Integration tests for stevefulme1.elastic.kibana_connector
+# These tests verify full CRUD lifecycle with idempotency and check_mode.
+# A live Kibana endpoint is required.
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_connector_name: "Integration Test Webhook"
+    test_connector_type: ".webhook"
+    test_connector_config:
+      url: "https://httpbin.org/post"
+      method: "post"
+      hasAuth: false
+# ============================================================
+# CREATE - check mode
+# ============================================================
+- name: Create kibana_connector (check mode)
+  stevefulme1.elastic.kibana_connector:
+    name: "{{ test_connector_name }}"
+    connector_type_id: "{{ test_connector_type }}"
+    config: "{{ test_connector_config }}"
+    state: present
+  check_mode: true
+  register: create_check
+- name: Assert create in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - create_check is changed
+    fail_msg: "Create in check mode should report changed=true"
+# ============================================================
+# CREATE - real
+# ============================================================
+- name: Create kibana_connector
+  stevefulme1.elastic.kibana_connector:
+    name: "{{ test_connector_name }}"
+    connector_type_id: "{{ test_connector_type }}"
+    config: "{{ test_connector_config }}"
+    state: present
+  register: create_result
+- name: Assert create reports changed
+  ansible.builtin.assert:
+    that:
+      - create_result is changed
+    fail_msg: "Create should report changed=true"
+- name: Record created resource identifier
+  ansible.builtin.set_fact:
+    created_conn_id: "{{ create_result.connector.id }}"
+# ============================================================
+# CREATE - idempotency
+# ============================================================
+- name: Create kibana_connector again (idempotency)
+  stevefulme1.elastic.kibana_connector:
+    connector_id: "{{ created_conn_id }}"
+    name: "{{ test_connector_name }}"
+    connector_type_id: "{{ test_connector_type }}"
+    config: "{{ test_connector_config }}"
+    state: present
+  register: create_idempotent
+- name: Assert create is idempotent
+  ansible.builtin.assert:
+    that:
+      - create_idempotent is not changed
+    fail_msg: "Repeated create with same params should report changed=false"
+# ============================================================
+# READ - verify created resource
+# ============================================================
+- name: Get kibana_connector info
+  stevefulme1.elastic.kibana_connector_info:
+    connector_id: "{{ created_conn_id }}"
+  register: info_result
+- name: Assert resource exists
+  ansible.builtin.assert:
+    that:
+      - info_result.kibana_connectors | length == 1
+      - info_result.kibana_connectors[0].name == test_connector_name
+    fail_msg: "Created resource does not match expected values"
+# ============================================================
+# UPDATE
+# ============================================================
+- name: Update kibana_connector
+  stevefulme1.elastic.kibana_connector:
+    connector_id: "{{ created_conn_id }}"
+    name: "Integration Test Webhook Updated"
+    config: "{{ test_connector_config }}"
+    state: present
+  register: update_result
+- name: Assert update reports changed
+  ansible.builtin.assert:
+    that:
+      - update_result is changed
+    fail_msg: "Update should report changed=true"
+# UPDATE - idempotency
+- name: Update kibana_connector again (idempotency)
+  stevefulme1.elastic.kibana_connector:
+    connector_id: "{{ created_conn_id }}"
+    name: "Integration Test Webhook Updated"
+    config: "{{ test_connector_config }}"
+    state: present
+  register: update_idempotent
+- name: Assert update is idempotent
+  ansible.builtin.assert:
+    that:
+      - update_idempotent is not changed
+    fail_msg: "Repeated update with same params should report changed=false"
+# ============================================================
+# DELETE - check mode
+# ============================================================
+- name: Delete kibana_connector (check mode)
+  stevefulme1.elastic.kibana_connector:
+    connector_id: "{{ created_conn_id }}"
+    name: "Integration Test Webhook Updated"
+    state: absent
+  check_mode: true
+  register: delete_check
+- name: Assert delete in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_check is changed
+    fail_msg: "Delete in check mode should report changed=true"
+- name: Verify kibana_connector still exists after check mode delete
+  stevefulme1.elastic.kibana_connector_info:
+    connector_id: "{{ created_conn_id }}"
+  register: delete_check_verify
+- name: Assert resource still exists after check mode delete
+  ansible.builtin.assert:
+    that:
+      - delete_check_verify.kibana_connectors | length == 1
+    fail_msg: "Resource should still exist after check mode delete"
+# ============================================================
+# DELETE - real
+# ============================================================
+- name: Delete kibana_connector
+  stevefulme1.elastic.kibana_connector:
+    connector_id: "{{ created_conn_id }}"
+    name: "Integration Test Webhook Updated"
+    state: absent
+  register: delete_result
+- name: Assert delete reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_result is changed
+    fail_msg: "Delete should report changed=true"
+# DELETE - idempotency
+- name: Delete kibana_connector again (idempotency)
+  stevefulme1.elastic.kibana_connector:
+    connector_id: "{{ created_conn_id }}"
+    name: "Integration Test Webhook Updated"
+    state: absent
+  register: delete_idempotent
+- name: Assert delete is idempotent
+  ansible.builtin.assert:
+    that:
+      - delete_idempotent is not changed
+    fail_msg: "Repeated delete should report changed=false"

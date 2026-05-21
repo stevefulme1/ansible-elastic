@@ -1,0 +1,181 @@
+---
+# Integration tests for stevefulme1.elastic.fleet_package_policy
+# These tests verify full CRUD lifecycle with idempotency and check_mode.
+# A live Kibana endpoint is required.
+# NOTE: Requires an existing agent policy. Creates one first.
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_agent_policy_name: "Integration Test Agent Policy for Pkg"
+    test_pkg_policy_name: "Integration Test Package Policy"
+    test_pkg_namespace: "default"
+    test_pkg_package:
+      name: "system"
+      version: "1.0.0"
+# ============================================================
+# SETUP - Create agent policy for package policy
+# ============================================================
+- name: Create agent policy for package policy tests
+  stevefulme1.elastic.fleet_agent_policy:
+    name: "{{ test_agent_policy_name }}"
+    namespace: "default"
+    state: present
+  register: agent_policy_result
+- name: Record agent policy ID
+  ansible.builtin.set_fact:
+    test_agent_policy_id: "{{ agent_policy_result.policy.id }}"
+# ============================================================
+# CREATE - check mode
+# ============================================================
+- name: Create fleet_package_policy (check mode)
+  stevefulme1.elastic.fleet_package_policy:
+    name: "{{ test_pkg_policy_name }}"
+    namespace: "{{ test_pkg_namespace }}"
+    policy_id: "{{ test_agent_policy_id }}"
+    package: "{{ test_pkg_package }}"
+    state: present
+  check_mode: true
+  register: create_check
+- name: Assert create in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - create_check is changed
+    fail_msg: "Create in check mode should report changed=true"
+# ============================================================
+# CREATE - real
+# ============================================================
+- name: Create fleet_package_policy
+  stevefulme1.elastic.fleet_package_policy:
+    name: "{{ test_pkg_policy_name }}"
+    namespace: "{{ test_pkg_namespace }}"
+    policy_id: "{{ test_agent_policy_id }}"
+    package: "{{ test_pkg_package }}"
+    state: present
+  register: create_result
+- name: Assert create reports changed
+  ansible.builtin.assert:
+    that:
+      - create_result is changed
+    fail_msg: "Create should report changed=true"
+- name: Record created resource identifier
+  ansible.builtin.set_fact:
+    created_pkg_policy_id: "{{ create_result.package_policy.id }}"
+# ============================================================
+# CREATE - idempotency
+# ============================================================
+- name: Create fleet_package_policy again (idempotency)
+  stevefulme1.elastic.fleet_package_policy:
+    package_policy_id: "{{ created_pkg_policy_id }}"
+    name: "{{ test_pkg_policy_name }}"
+    namespace: "{{ test_pkg_namespace }}"
+    policy_id: "{{ test_agent_policy_id }}"
+    package: "{{ test_pkg_package }}"
+    state: present
+  register: create_idempotent
+- name: Assert create is idempotent
+  ansible.builtin.assert:
+    that:
+      - create_idempotent is not changed
+    fail_msg: "Repeated create with same params should report changed=false"
+# ============================================================
+# READ - verify created resource
+# ============================================================
+- name: Get fleet_package_policy info
+  stevefulme1.elastic.fleet_package_policy_info:
+    package_policy_id: "{{ created_pkg_policy_id }}"
+  register: info_result
+- name: Assert resource exists
+  ansible.builtin.assert:
+    that:
+      - info_result.fleet_package_policies | length == 1
+      - info_result.fleet_package_policies[0].name == test_pkg_policy_name
+    fail_msg: "Created resource does not match expected values"
+# ============================================================
+# UPDATE
+# ============================================================
+- name: Update fleet_package_policy
+  stevefulme1.elastic.fleet_package_policy:
+    package_policy_id: "{{ created_pkg_policy_id }}"
+    name: "Integration Test Package Policy Updated"
+    namespace: "{{ test_pkg_namespace }}"
+    policy_id: "{{ test_agent_policy_id }}"
+    package: "{{ test_pkg_package }}"
+    state: present
+  register: update_result
+- name: Assert update reports changed
+  ansible.builtin.assert:
+    that:
+      - update_result is changed
+    fail_msg: "Update should report changed=true"
+# UPDATE - idempotency
+- name: Update fleet_package_policy again (idempotency)
+  stevefulme1.elastic.fleet_package_policy:
+    package_policy_id: "{{ created_pkg_policy_id }}"
+    name: "Integration Test Package Policy Updated"
+    namespace: "{{ test_pkg_namespace }}"
+    policy_id: "{{ test_agent_policy_id }}"
+    package: "{{ test_pkg_package }}"
+    state: present
+  register: update_idempotent
+- name: Assert update is idempotent
+  ansible.builtin.assert:
+    that:
+      - update_idempotent is not changed
+    fail_msg: "Repeated update with same params should report changed=false"
+# ============================================================
+# DELETE - check mode
+# ============================================================
+- name: Delete fleet_package_policy (check mode)
+  stevefulme1.elastic.fleet_package_policy:
+    package_policy_id: "{{ created_pkg_policy_id }}"
+    name: "Integration Test Package Policy Updated"
+    state: absent
+  check_mode: true
+  register: delete_check
+- name: Assert delete in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_check is changed
+    fail_msg: "Delete in check mode should report changed=true"
+- name: Verify fleet_package_policy still exists after check mode delete
+  stevefulme1.elastic.fleet_package_policy_info:
+    package_policy_id: "{{ created_pkg_policy_id }}"
+  register: delete_check_verify
+- name: Assert resource still exists after check mode delete
+  ansible.builtin.assert:
+    that:
+      - delete_check_verify.fleet_package_policies | length == 1
+    fail_msg: "Resource should still exist after check mode delete"
+# ============================================================
+# DELETE - real
+# ============================================================
+- name: Delete fleet_package_policy
+  stevefulme1.elastic.fleet_package_policy:
+    package_policy_id: "{{ created_pkg_policy_id }}"
+    name: "Integration Test Package Policy Updated"
+    state: absent
+  register: delete_result
+- name: Assert delete reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_result is changed
+    fail_msg: "Delete should report changed=true"
+# DELETE - idempotency
+- name: Delete fleet_package_policy again (idempotency)
+  stevefulme1.elastic.fleet_package_policy:
+    package_policy_id: "{{ created_pkg_policy_id }}"
+    name: "Integration Test Package Policy Updated"
+    state: absent
+  register: delete_idempotent
+- name: Assert delete is idempotent
+  ansible.builtin.assert:
+    that:
+      - delete_idempotent is not changed
+    fail_msg: "Repeated delete should report changed=false"
+# ============================================================
+# TEARDOWN - Remove agent policy
+# ============================================================
+- name: Delete agent policy used for tests
+  stevefulme1.elastic.fleet_agent_policy:
+    policy_id: "{{ test_agent_policy_id }}"
+    name: "{{ test_agent_policy_name }}"
+    state: absent

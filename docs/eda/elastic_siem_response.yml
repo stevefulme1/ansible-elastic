@@ -1,0 +1,70 @@
+---
+# Example EDA rulebook: Elastic SIEM Incident Response
+#
+# Polls Kibana Security Detection Engine for triggered detections
+# and runs automated response playbooks based on severity and rule type.
+#
+# Usage:
+#   ansible-rulebook --rulebook elastic_siem_response.yml -i inventory.yml
+
+- name: Elastic SIEM Automated Response
+  hosts: all
+  sources:
+    - stevefulme1.elastic.elastic_siem:
+        api_url: "{{ lookup('env', 'KIBANA_URL') }}"
+        api_key: "{{ lookup('env', 'ELASTIC_API_KEY') }}"
+        interval: 15
+        severity_filter:
+          - high
+          - critical
+        max_signals: 50
+        validate_certs: true
+
+  rules:
+    - name: Block source IP on brute force detection
+      condition: >-
+        event.elastic_siem.rule_name is match(".*[Bb]rute [Ff]orce.*")
+        and event.elastic_siem.source_ip != ""
+      action:
+        run_playbook:
+          name: block_ip_firewall.yml
+          extra_vars:
+            source_ip: "{{ event.elastic_siem.source_ip }}"
+            signal_id: "{{ event.elastic_siem.signal_id }}"
+            rule_name: "{{ event.elastic_siem.rule_name }}"
+
+    - name: Isolate host on critical malware detection
+      condition: >-
+        event.elastic_siem.severity == "critical"
+        and event.elastic_siem.host_name != ""
+      action:
+        run_playbook:
+          name: isolate_host.yml
+          extra_vars:
+            host_name: "{{ event.elastic_siem.host_name }}"
+            signal_id: "{{ event.elastic_siem.signal_id }}"
+            risk_score: "{{ event.elastic_siem.risk_score }}"
+
+    - name: Create SOAR case for high severity detections
+      condition: event.elastic_siem.severity == "high"
+      action:
+        run_playbook:
+          name: create_soar_case.yml
+          extra_vars:
+            signal_id: "{{ event.elastic_siem.signal_id }}"
+            rule_name: "{{ event.elastic_siem.rule_name }}"
+            severity: "{{ event.elastic_siem.severity }}"
+            description: "{{ event.elastic_siem.description }}"
+            host_name: "{{ event.elastic_siem.host_name }}"
+            source_ip: "{{ event.elastic_siem.source_ip }}"
+
+    - name: Notify SOC on any detection
+      condition: event.elastic_siem is defined
+      action:
+        run_playbook:
+          name: notify_soc_channel.yml
+          extra_vars:
+            signal_id: "{{ event.elastic_siem.signal_id }}"
+            rule_name: "{{ event.elastic_siem.rule_name }}"
+            severity: "{{ event.elastic_siem.severity }}"
+            risk_score: "{{ event.elastic_siem.risk_score }}"

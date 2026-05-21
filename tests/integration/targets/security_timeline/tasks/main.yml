@@ -1,0 +1,157 @@
+---
+# Integration tests for stevefulme1.elastic.security_timeline
+# These tests verify full CRUD lifecycle with idempotency and check_mode.
+# A live Kibana API endpoint is required.
+# NOTE: Timeline update requires the version field for optimistic concurrency.
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_timeline_params:
+      state: present
+      title: "Integration Test Investigation"
+      description: "Security investigation timeline for integration tests"
+      timeline_type: "default"
+      columns: []
+      data_providers: []
+      kql_mode: "filter"
+# ============================================================
+# CREATE - check mode
+# ============================================================
+- name: Create timeline (check mode)  # noqa: args[module]
+  stevefulme1.elastic.security_timeline:
+    state: present
+  args: "{{ test_timeline_params }}"
+  check_mode: true
+  register: create_check
+- name: Assert create in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - create_check is changed
+    fail_msg: "Create in check mode should report changed=true"
+# ============================================================
+# CREATE - real
+# ============================================================
+- name: Create timeline  # noqa: args[module]
+  stevefulme1.elastic.security_timeline:
+    state: present
+  args: "{{ test_timeline_params }}"
+  register: create_result
+- name: Assert create reports changed
+  ansible.builtin.assert:
+    that:
+      - create_result is changed
+    fail_msg: "Create should report changed=true"
+- name: Record created resource identifiers
+  ansible.builtin.set_fact:
+    created_id: "{{ create_result.timeline_id }}"
+    created_version: "{{ create_result.version }}"
+# ============================================================
+# CREATE - idempotency
+# ============================================================
+- name: Create timeline again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.security_timeline:
+    timeline_id: "{{ created_id }}"
+  args: "{{ test_timeline_params }}"
+  register: create_idempotent
+- name: Assert create is idempotent
+  ansible.builtin.assert:
+    that:
+      - create_idempotent is not changed
+    fail_msg: "Repeated create with same params should report changed=false"
+# ============================================================
+# READ - verify created resource
+# ============================================================
+- name: Get timeline info  # noqa: args[module]
+  stevefulme1.elastic.security_timeline_info:
+    timeline_id: "{{ created_id }}"
+  register: info_result
+- name: Assert resource exists
+  ansible.builtin.assert:
+    that:
+      - info_result.security_timelines | length == 1
+    fail_msg: "Created resource does not match expected values"
+# ============================================================
+# UPDATE
+# ============================================================
+- name: Update timeline  # noqa: args[module]
+  stevefulme1.elastic.security_timeline:
+    timeline_id: "{{ created_id }}"
+    title: "Integration Test Investigation - Updated"
+    description: "Updated security investigation timeline"
+    timeline_type: "default"
+    columns: []
+    data_providers: []
+    kql_mode: "filter"
+    state: present
+  register: update_result
+- name: Assert update reports changed
+  ansible.builtin.assert:
+    that:
+      - update_result is changed
+    fail_msg: "Update should report changed=true"
+- name: Store updated version for subsequent operations
+  ansible.builtin.set_fact:
+    updated_version: "{{ update_result.version }}"
+# UPDATE - idempotency
+- name: Update timeline again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.security_timeline:
+    timeline_id: "{{ created_id }}"
+    title: "Integration Test Investigation - Updated"
+    description: "Updated security investigation timeline"
+    timeline_type: "default"
+    columns: []
+    data_providers: []
+    kql_mode: "filter"
+    state: present
+  register: update_idempotent
+- name: Assert update is idempotent
+  ansible.builtin.assert:
+    that:
+      - update_idempotent is not changed
+    fail_msg: "Repeated update with same params should report changed=false"
+# ============================================================
+# DELETE - check mode
+# ============================================================
+- name: Delete timeline (check mode)  # noqa: args[module]
+  stevefulme1.elastic.security_timeline:
+    timeline_id: "{{ created_id }}"
+    state: absent
+  check_mode: true
+  register: delete_check
+- name: Assert delete in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_check is changed
+    fail_msg: "Delete in check mode should report changed=true"
+- name: Verify timeline still exists after check mode delete  # noqa: args[module]
+  stevefulme1.elastic.security_timeline_info:
+    timeline_id: "{{ created_id }}"
+  register: delete_check_verify
+- name: Assert resource still exists after check mode delete
+  ansible.builtin.assert:
+    that:
+      - delete_check_verify.security_timelines | length == 1
+    fail_msg: "Resource should still exist after check mode delete"
+# ============================================================
+# DELETE - real
+# ============================================================
+- name: Delete timeline  # noqa: args[module]
+  stevefulme1.elastic.security_timeline:
+    timeline_id: "{{ created_id }}"
+    state: absent
+  register: delete_result
+- name: Assert delete reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_result is changed
+    fail_msg: "Delete should report changed=true"
+# DELETE - idempotency
+- name: Delete timeline again (idempotency)  # noqa: args[module]
+  stevefulme1.elastic.security_timeline:
+    timeline_id: "{{ created_id }}"
+    state: absent
+  register: delete_idempotent
+- name: Assert delete is idempotent
+  ansible.builtin.assert:
+    that:
+      - delete_idempotent is not changed
+    fail_msg: "Repeated delete should report changed=false"

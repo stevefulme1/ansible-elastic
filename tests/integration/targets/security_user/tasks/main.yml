@@ -1,0 +1,145 @@
+---
+# Integration tests for stevefulme1.elastic.security_user
+# These tests verify full CRUD lifecycle with idempotency and check_mode.
+# A live Elasticsearch endpoint with security enabled is required.
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_username: "integration_test_user"
+    test_user_params:
+      state: present
+      username: "integration_test_user"
+      password: "T3st_P@ssw0rd!"
+      roles:
+        - viewer
+      full_name: "Integration Test User"
+      email: "testuser@example.com"
+      metadata:
+        department: "QA"
+      enabled: true
+# ============================================================
+# CREATE - check mode
+# ============================================================
+- name: Create security user (check mode)
+  stevefulme1.elastic.security_user: "{{ test_user_params }}"
+  check_mode: true
+  register: create_check
+- name: Assert create in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - create_check is changed
+    fail_msg: "Create in check mode should report changed=true"
+# ============================================================
+# CREATE - real
+# ============================================================
+- name: Create security user
+  stevefulme1.elastic.security_user: "{{ test_user_params }}"
+  register: create_result
+- name: Assert create reports changed
+  ansible.builtin.assert:
+    that:
+      - create_result is changed
+    fail_msg: "Create should report changed=true"
+# ============================================================
+# CREATE - idempotency
+# ============================================================
+- name: Create security user again (idempotency)
+  stevefulme1.elastic.security_user: "{{ test_user_params }}"
+  register: create_idempotent
+- name: Assert create is idempotent
+  ansible.builtin.assert:
+    that:
+      - create_idempotent is not changed
+    fail_msg: "Repeated create with same params should report changed=false"
+# ============================================================
+# READ - verify created resource
+# ============================================================
+- name: Get security user info
+  stevefulme1.elastic.security_user_info:
+    username: "{{ test_username }}"
+  register: info_result
+- name: Assert resource exists
+  ansible.builtin.assert:
+    that:
+      - info_result.security_users | length == 1
+      - info_result.security_users[0].username == test_username
+      - info_result.security_users[0].roles == ["viewer"]
+    fail_msg: "Created resource does not match expected values"
+# ============================================================
+# UPDATE
+# ============================================================
+- name: Update security user
+  stevefulme1.elastic.security_user:
+    username: "{{ test_username }}"
+    roles:
+      - viewer
+      - editor
+    full_name: "Updated Test User"
+    state: present
+  register: update_result
+- name: Assert update reports changed
+  ansible.builtin.assert:
+    that:
+      - update_result is changed
+    fail_msg: "Update should report changed=true"
+# UPDATE - idempotency
+- name: Update security user again (idempotency)
+  stevefulme1.elastic.security_user:
+    username: "{{ test_username }}"
+    roles:
+      - viewer
+      - editor
+    full_name: "Updated Test User"
+    state: present
+  register: update_idempotent
+- name: Assert update is idempotent
+  ansible.builtin.assert:
+    that:
+      - update_idempotent is not changed
+    fail_msg: "Repeated update with same params should report changed=false"
+# ============================================================
+# DELETE - check mode
+# ============================================================
+- name: Delete security user (check mode)
+  stevefulme1.elastic.security_user:
+    username: "{{ test_username }}"
+    state: absent
+  check_mode: true
+  register: delete_check
+- name: Assert delete in check mode reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_check is changed
+    fail_msg: "Delete in check mode should report changed=true"
+- name: Verify security user still exists after check mode delete
+  stevefulme1.elastic.security_user_info:
+    username: "{{ test_username }}"
+  register: delete_check_verify
+- name: Assert resource still exists after check mode delete
+  ansible.builtin.assert:
+    that:
+      - delete_check_verify.security_users | length == 1
+    fail_msg: "Resource should still exist after check mode delete"
+# ============================================================
+# DELETE - real
+# ============================================================
+- name: Delete security user
+  stevefulme1.elastic.security_user:
+    username: "{{ test_username }}"
+    state: absent
+  register: delete_result
+- name: Assert delete reports changed
+  ansible.builtin.assert:
+    that:
+      - delete_result is changed
+    fail_msg: "Delete should report changed=true"
+# DELETE - idempotency
+- name: Delete security user again (idempotency)
+  stevefulme1.elastic.security_user:
+    username: "{{ test_username }}"
+    state: absent
+  register: delete_idempotent
+- name: Assert delete is idempotent
+  ansible.builtin.assert:
+    that:
+      - delete_idempotent is not changed
+    fail_msg: "Repeated delete should report changed=false"

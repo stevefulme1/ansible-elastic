@@ -39,7 +39,12 @@ stevefulme1.elastic.*:
         "Enrich Policy": "Data Processing & Analytics",
         "Synonym": "Data Processing & Analytics"
       } as $mapping |
-      (.policy // .agent // .data_view // .data_streams // .role // .user // .rule // .case // .space // .slo // .connector // .saved_object // .window // .key // .output // .host // .package_policy // .repository // .pipeline // .watcher // .query_rule // .enrich_policy // .synonym // .template // .transform // .) |
+      (
+        .policy // .agent // .data_view // .data_streams // .role // .user // .rule //
+        .case // .space // .slo // .connector // .saved_object // .window // .key //
+        .output // .host // .package_policy // .repository // .pipeline // .watcher //
+        .query_rule // .enrich_policy // .synonym // .template // .transform // .
+      ) |
       (if type=="array" then .[] else if type=="object" then . else empty end end) as $data |
       select($data.id != null or $data.policy_id != null or $data.agent_id != null or $data.name != null) |
       (
@@ -86,10 +91,28 @@ stevefulme1.elastic.*:
         end
       ) as $sub_node_type |
       {
-        name: ($data.id // $data.policy_id // $data.agent_id // $data.data_view_id // $data.slo_id // $data.connector_id // $data.rule_id // $data.case_id // $data.saved_object_id // $data.window_id // $data.username // $data.api_key_id // $data.detection_rule_id // $data.exception_id // $data.timeline_id // $data.output_id // $data.host_id // $data.enrollment_key_id // $data.package_policy_id // $data.repository // $data.pipeline_id // $data.watcher_id // $data.query_rule_id // $data.enrich_policy_id // $data.synonym_id // $data.name),
+        name: (
+          $data.id // $data.policy_id // $data.agent_id // $data.data_view_id //
+          $data.slo_id // $data.connector_id // $data.rule_id // $data.case_id //
+          $data.saved_object_id // $data.window_id // $data.username // $data.api_key_id //
+          $data.detection_rule_id // $data.exception_id // $data.timeline_id //
+          $data.output_id // $data.host_id // $data.enrollment_key_id //
+          $data.package_policy_id // $data.repository // $data.pipeline_id //
+          $data.watcher_id // $data.query_rule_id // $data.enrich_policy_id //
+          $data.synonym_id // $data.name
+        ),
         canonical_facts: {
           name: ($data.name // $data.title // $data.username // "UNKNOWN"),
-          id: ($data.id // $data.policy_id // $data.agent_id // $data.data_view_id // $data.slo_id // $data.connector_id // $data.rule_id // $data.case_id // $data.saved_object_id // $data.window_id // $data.username // $data.api_key_id // $data.detection_rule_id // $data.exception_id // $data.timeline_id // $data.output_id // $data.host_id // $data.enrollment_key_id // $data.package_policy_id // $data.repository // $data.pipeline_id // $data.watcher_id // $data.query_rule_id // $data.enrich_policy_id // $data.synonym_id),
+          id: (
+            $data.id // $data.policy_id // $data.agent_id // $data.data_view_id //
+            $data.slo_id // $data.connector_id // $data.rule_id // $data.case_id //
+            $data.saved_object_id // $data.window_id // $data.username //
+            $data.api_key_id // $data.detection_rule_id // $data.exception_id //
+            $data.timeline_id // $data.output_id // $data.host_id //
+            $data.enrollment_key_id // $data.package_policy_id // $data.repository //
+            $data.pipeline_id // $data.watcher_id // $data.query_rule_id //
+            $data.enrich_policy_id // $data.synonym_id
+          ),
           node_type: $node_type
         },
         facts: {

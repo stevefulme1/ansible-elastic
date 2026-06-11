@@ -1,0 +1,101 @@
+---
+stevefulme1.elastic.*:
+  query: >-
+    (
+      {
+        "resourcetype": "Category",
+        "Fleet Agent": "Compute",
+        "Agent Policy": "Governance & Operations",
+        "Data Stream": "Data Processing & Analytics",
+        "Index Template": "Data Processing & Analytics",
+        "ILM Policy": "Data Processing & Analytics",
+        "SLM Policy": "Data Processing & Analytics",
+        "Ingest Pipeline": "Data Processing & Analytics",
+        "Transform": "Data Processing & Analytics",
+        "Component Template": "Data Processing & Analytics",
+        "Kibana Space": "Governance & Operations",
+        "Kibana Data View": "Data Processing & Analytics",
+        "Kibana SLO": "Governance & Operations",
+        "Kibana Connector": "App Integration & Messaging",
+        "Kibana Alerting Rule": "Governance & Operations",
+        "Kibana Case": "Governance & Operations",
+        "Kibana Saved Object": "Data Processing & Analytics",
+        "Kibana Maintenance Window": "Governance & Operations",
+        "Security Role": "Security",
+        "Security User": "Security",
+        "Security API Key": "Security",
+        "Security Detection Rule": "Security",
+        "Security Exception": "Security",
+        "Security Timeline": "Security",
+        "Fleet Output": "App Integration & Messaging",
+        "Fleet Server Host": "Compute",
+        "Fleet Enrollment Key": "Security",
+        "Fleet Package Policy": "Governance & Operations",
+        "Snapshot Repository": "Storage",
+        "Logstash Pipeline": "Data Processing & Analytics",
+        "Watcher": "Governance & Operations",
+        "Query Rule": "Data Processing & Analytics",
+        "Connector": "App Integration & Messaging",
+        "Enrich Policy": "Data Processing & Analytics",
+        "Synonym": "Data Processing & Analytics"
+      } as $mapping |
+      (.policy // .agent // .data_view // .data_streams // .role // .user // .rule // .case // .space // .slo // .connector // .saved_object // .window // .key // .output // .host // .package_policy // .repository // .pipeline // .watcher // .query_rule // .enrich_policy // .synonym // .template // .transform // .) |
+      (if type=="array" then .[] else if type=="object" then . else empty end end) as $data |
+      select($data.id != null or $data.policy_id != null or $data.agent_id != null or $data.name != null) |
+      (
+        if $data.id != null then "Fleet Agent"
+        elif $data.policy_id != null then "Agent Policy"
+        elif $data.name != null and ($data.data_stream != null or $data.timestamp_field != null) then "Data Stream"
+        elif $data.name != null and $data.template != null then "Index Template"
+        elif $data.name != null and $data.phases != null then "ILM Policy"
+        elif $data.name != null and ($data.schedule != null or $data.retention != null) then "SLM Policy"
+        elif $data.name != null and $data.processors != null then "Ingest Pipeline"
+        elif $data.name != null and $data.source != null and $data.dest != null then "Transform"
+        elif $data.name != null and ($data.template_mapping != null or $data.settings != null) then "Component Template"
+        elif $data.space_id != null or ($data.name != null and $data.disabledFeatures != null) then "Kibana Space"
+        elif $data.data_view_id != null or ($data.title != null and $data.timeFieldName != null) then "Kibana Data View"
+        elif $data.slo_id != null or ($data.name != null and $data.indicator != null) then "Kibana SLO"
+        elif $data.connector_id != null or ($data.name != null and $data.connector_type_id != null) then "Kibana Connector"
+        elif $data.rule_id != null or ($data.name != null and $data.rule_type_id != null) then "Kibana Alerting Rule"
+        elif $data.case_id != null then "Kibana Case"
+        elif $data.saved_object_id != null then "Kibana Saved Object"
+        elif $data.maintenance_window_id != null then "Kibana Maintenance Window"
+        elif $data.username != null then "Security User"
+        elif $data.api_key_id != null then "Security API Key"
+        elif $data.detection_rule_id != null then "Security Detection Rule"
+        elif $data.exception_id != null then "Security Exception"
+        elif $data.timeline_id != null then "Security Timeline"
+        elif $data.output_id != null then "Fleet Output"
+        elif $data.host_id != null then "Fleet Server Host"
+        elif $data.enrollment_key_id != null then "Fleet Enrollment Key"
+        elif $data.package_policy_id != null then "Fleet Package Policy"
+        elif $data.repository != null then "Snapshot Repository"
+        elif $data.pipeline_id != null then "Logstash Pipeline"
+        elif $data.watcher_id != null then "Watcher"
+        elif $data.query_rule_id != null then "Query Rule"
+        elif $data.connector != null then "Connector"
+        elif $data.enrich_policy_id != null then "Enrich Policy"
+        elif $data.synonym_id != null then "Synonym"
+        else "Security Role"
+        end
+      ) as $node_type |
+      (
+        if $data.cluster != null or $data.cluster_name != null then ($data.cluster // $data.cluster_name)
+        elif $data.space_id != null or $data.namespace != null then ($data.space_id // $data.namespace)
+        else "default"
+        end
+      ) as $sub_node_type |
+      {
+        name: ($data.id // $data.policy_id // $data.agent_id // $data.data_view_id // $data.slo_id // $data.connector_id // $data.rule_id // $data.case_id // $data.saved_object_id // $data.window_id // $data.username // $data.api_key_id // $data.detection_rule_id // $data.exception_id // $data.timeline_id // $data.output_id // $data.host_id // $data.enrollment_key_id // $data.package_policy_id // $data.repository // $data.pipeline_id // $data.watcher_id // $data.query_rule_id // $data.enrich_policy_id // $data.synonym_id // $data.name),
+        canonical_facts: {
+          name: ($data.name // $data.title // $data.username // "UNKNOWN"),
+          id: ($data.id // $data.policy_id // $data.agent_id // $data.data_view_id // $data.slo_id // $data.connector_id // $data.rule_id // $data.case_id // $data.saved_object_id // $data.window_id // $data.username // $data.api_key_id // $data.detection_rule_id // $data.exception_id // $data.timeline_id // $data.output_id // $data.host_id // $data.enrollment_key_id // $data.package_policy_id // $data.repository // $data.pipeline_id // $data.watcher_id // $data.query_rule_id // $data.enrich_policy_id // $data.synonym_id),
+          node_type: $node_type
+        },
+        facts: {
+          infra_type: "SaaS",
+          infra_bucket: ($mapping[$node_type] // "UNKNOWN"),
+          device_type: $sub_node_type
+        }
+      }
+    )

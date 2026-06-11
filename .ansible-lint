@@ -1,0 +1,9 @@
+---
+# Ansible-lint configuration
+exclude_paths:
+  - .git/
+  - .github/
+  - .ansible/
+
+warn_list:
+  - args[module]  # Integration tests use env vars for api_key, not inline args

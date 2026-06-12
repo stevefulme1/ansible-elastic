@@ -1,5 +1,8 @@
 """Unit tests for stevefulme1.elastic.plugins.modules.slm_policy_info."""
 
+from __future__ import absolute_import, division, print_function
+__metaclass__ = type
+
 from unittest.mock import MagicMock, patch
 
 from ansible_collections.stevefulme1.elastic.plugins.modules import slm_policy_info

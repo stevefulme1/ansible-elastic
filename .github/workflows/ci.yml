@@ -87,6 +87,12 @@ jobs:
       - name: Install test dependencies
         run: pip install pytest pytest-mock
         working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
+      - name: Install collection test requirements
+        run: |
+          if [ -f tests/unit/requirements.txt ]; then
+            pip install -r tests/unit/requirements.txt
+          fi
+        working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
       - name: Run unit tests
         working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
         run: ansible-test units --docker --python 3.12 -v

@@ -4,3 +4,4 @@ __pycache__/
 .ansible/
 tests/output/
 .test_namespace/
+elastic

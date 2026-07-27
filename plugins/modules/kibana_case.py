@@ -115,8 +115,6 @@ version:
   type: str
 """
 
-import json
-
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import (
     Client,

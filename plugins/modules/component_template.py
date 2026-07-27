@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: component_template
 short_description: Manage Elasticsearch component templates
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - Create, update, and delete Elasticsearch component template resources.
   - Supports check mode and diff mode for safe operations.

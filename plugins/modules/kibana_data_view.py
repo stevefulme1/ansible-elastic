@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: kibana_data_view
 short_description: Manage Kibana data views
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete Kibana data view resources.
   - Supports check mode and diff mode for safe operations.

@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: security_user_info
 short_description: Retrieve information about Elasticsearch security users
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Retrieve a single security user by username, or list all security users.
   - This module always reports C(changed=False).

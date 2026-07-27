@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: query_rule
 short_description: Manage Elasticsearch query rulesets
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - Create, update, and delete query rule resources.
   - Supports check mode and diff mode for safe operations.

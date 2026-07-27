@@ -13,7 +13,7 @@ DOCUMENTATION = r"""
 module: ingest_pipeline_info
 short_description: >-
   Retrieve information about Elasticsearch ingest pipelines
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - >-
     Retrieve a single ingest pipeline by its identifier,

@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: enrich_policy
 short_description: Manage Elasticsearch enrich policies
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - Create and delete Elasticsearch enrich policy resources.
   - Enrich policies are immutable. Changes require delete and recreate.

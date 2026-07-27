@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: security_user
 short_description: Manage Elasticsearch security users
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete Elasticsearch security users.
   - Supports check mode and diff mode for safe operations.

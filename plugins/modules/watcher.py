@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: watcher
 short_description: Manage Elasticsearch Watcher watches
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete Elasticsearch Watcher watch resources.
   - Supports check mode and diff mode for safe operations.

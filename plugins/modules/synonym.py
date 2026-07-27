@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: synonym
 short_description: Manage Elasticsearch synonym sets
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - Create, update, and delete synonym resources.
   - Supports check mode and diff mode for safe operations.

@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: fleet_server_host
 short_description: Manage Fleet server hosts
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete Fleet server host resources.
   - Supports check mode and diff mode for safe operations.

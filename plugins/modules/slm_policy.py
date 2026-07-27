@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: slm_policy
 short_description: Manage SLM (Snapshot Lifecycle Management) policies
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete SLM policy resources in Elasticsearch.
   - Supports check mode and diff mode for safe operations.

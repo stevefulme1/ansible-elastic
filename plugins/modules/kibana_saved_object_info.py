@@ -13,7 +13,7 @@ DOCUMENTATION = r"""
 module: kibana_saved_object_info
 short_description: >-
   Retrieve information about Kibana saved object resources
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - >-
     Retrieve a single Kibana saved object by its type and identifier,

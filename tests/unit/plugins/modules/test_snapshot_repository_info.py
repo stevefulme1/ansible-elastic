@@ -45,7 +45,7 @@ class TestSnapshotRepositoryInfoFetchList:
             "repo_a": {"type": "fs", "settings": {}},
             "repo_b": {"type": "s3", "settings": {}},
         }
-        result = snapshot_repository_info.fetch_list(client, module)
+        result = snapshot_repository_info.fetch_list(client)
         assert len(result) == 2
         names = [item["name"] for item in result]
         assert "repo_a" in names
@@ -55,7 +55,7 @@ class TestSnapshotRepositoryInfoFetchList:
         client = MagicMock()
         module = MagicMock()
         client.get.return_value = {}
-        result = snapshot_repository_info.fetch_list(client, module)
+        result = snapshot_repository_info.fetch_list(client)
         assert result == []
 
 

@@ -10,8 +10,35 @@ v0.2.0
 Release Summary
 ---------------
 
-Major feature release with 48 new modules across Elasticsearch, Kibana, Fleet,
-and Security SIEM, plus 3 EDA event source plugins.
+Major feature release with 48 new modules across Elasticsearch lifecycle,
+watcher, security, Kibana, Fleet, and Security SIEM domains, plus 3 EDA
+event source plugins. Core infrastructure rewrite with proper Elastic
+Stack authentication (API key and basic auth), corrected API endpoints,
+and CI pipeline hardening.
+
+Major Changes
+-------------
+
+- Rewrote API client authentication to use standard Elasticsearch
+  ``Authorization: ApiKey`` and ``Authorization: Basic`` headers
+  instead of incorrect ``X-API-Key`` header.
+- Added basic auth support (``api_username``/``api_password``) alongside API key auth.
+- Made ``api_url`` required with no default.
+
+Minor Changes
+-------------
+
+- Added ``build`` job to CI to verify collection tarball builds cleanly.
+- Removed ``|| true`` from unit test CI step so failures are caught.
+- Fixed CONTRIBUTING.md bug report link to point to this repo.
+- Fixed README authentication docs (``api_token`` corrected to ``api_key``).
+
+Bugfixes
+--------
+
+- Fixed X-API-Key authentication header to use the correct
+  Elasticsearch Authorization ApiKey format.
+- Fixed ``api_url`` defaulting to empty string causing silent failures.
 
 New Modules
 -----------
@@ -74,6 +101,7 @@ New EDA Event Source Plugins
 - ``elastic_alert`` -- Event source for Kibana alerting rule triggers
 - ``elastic_siem`` -- Event source for Security detection signals
 - ``elastic_watcher`` -- Event source for Watcher execution history
+- ``elastic_webhook`` -- Webhook receiver for Elastic alerting actions
 
 v0.1.0
 ======
@@ -81,4 +109,7 @@ v0.1.0
 Release Summary
 ---------------
 
-Initial pre-release.
+Initial pre-release with Elasticsearch core modules (component_template,
+connector, data_stream, enrich_policy, index_template, ingest_pipeline,
+logstash_pipeline, query_rule, synonym, transform) and their info
+counterparts.

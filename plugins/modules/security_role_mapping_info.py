@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: security_role_mapping_info
 short_description: Retrieve information about Elasticsearch security role mappings
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Retrieve a single security role mapping by name, or list all security role mappings.
   - This module always reports C(changed=False).

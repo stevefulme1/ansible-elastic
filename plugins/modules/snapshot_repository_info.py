@@ -11,34 +11,19 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: snapshot_repository_info
-short_description: >-
-  Retrieve information about snapshot repositories
-version_added: "1.0.0"
+short_description: Retrieve information about Elasticsearch snapshot repositories
+version_added: "0.2.0"
 description:
-  - >-
-    Retrieve a single snapshot repository by its name,
-    or list all snapshot repositories.
+  - Retrieve a single snapshot repository by name, or list all repositories.
   - This module always reports C(changed=False).
 author:
   - "Steve Fulmer (@stevefulme1)"
 options:
-  id:
+  repository:
     description:
       - The name of the snapshot repository to retrieve.
       - When omitted, all snapshot repositories are listed.
     type: str
-    required: false
-  page:
-    description:
-      - Page number for paginated results.
-      - Only applies when listing resources.
-    type: int
-    required: false
-  page_size:
-    description:
-      - Number of results per page.
-      - Only applies when listing resources.
-    type: int
     required: false
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
@@ -47,7 +32,7 @@ extends_documentation_fragment:
 EXAMPLES = r"""
 - name: Get a specific snapshot repository
   stevefulme1.elastic.snapshot_repository_info:
-    id: "my_backup_repo"
+    repository: "my_backup_repo"
   register: result
 
 - name: List all snapshot repositories
@@ -90,12 +75,14 @@ def fetch_single(client, identifier):
             entry["name"] = identifier
             return entry
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
-def fetch_list(client, module):
-    """List snapshot repository resources."""
+def fetch_list(client):
+    """List all snapshot repositories."""
     response = client.get("/_snapshot")
     if isinstance(response, dict):
         items = []
@@ -110,9 +97,7 @@ def main():
     spec = auth_argument_spec()
     spec.update(
         dict(
-            id=dict(type="str", required=False),
-            page=dict(type="int", required=False),
-            page_size=dict(type="int", required=False),
+            repository=dict(type="str", required=False),
         )
     )
 
@@ -131,13 +116,13 @@ def main():
 
     try:
         client = Client(module)
-        identifier = module.params.get("id")
+        identifier = module.params.get("repository")
 
         if identifier is not None:
             item = fetch_single(client, identifier)
             result["snapshot_repositories"] = [item] if item else []
         else:
-            result["snapshot_repositories"] = fetch_list(client, module)
+            result["snapshot_repositories"] = fetch_list(client)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

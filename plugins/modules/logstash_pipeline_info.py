@@ -13,7 +13,7 @@ DOCUMENTATION = r"""
 module: logstash_pipeline_info
 short_description: >-
   Retrieve information about Logstash pipelines via Elasticsearch
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - >-
     Retrieve a single Logstash pipeline by its identifier,

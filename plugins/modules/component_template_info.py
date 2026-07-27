@@ -13,7 +13,7 @@ DOCUMENTATION = r"""
 module: component_template_info
 short_description: >-
   Retrieve information about Elasticsearch component templates
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - >-
     Retrieve a single component template by name,

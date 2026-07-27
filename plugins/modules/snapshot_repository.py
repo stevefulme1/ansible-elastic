@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: snapshot_repository
 short_description: Manage snapshot repositories
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete snapshot repository resources in Elasticsearch.
   - Supports check mode and diff mode for safe operations.
@@ -112,8 +112,10 @@ def get_current_state(client, module):
         if isinstance(response, dict) and repository in response:
             return response[repository]
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -200,7 +202,8 @@ def main():
                         data=desired,
                         params=params if params else None,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    if isinstance(response, dict):
+                        result["api_response"] = response
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -217,7 +220,8 @@ def main():
                         data=desired,
                         params=params if params else None,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    if isinstance(response, dict):
+                        result["api_response"] = response
 
             else:
                 # Resource exists and is up-to-date

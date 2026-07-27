@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: kibana_data_view_info
 short_description: Retrieve information about Kibana data views
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Retrieve a single Kibana data view by its identifier, or list all data views.
   - This module always reports C(changed=False).

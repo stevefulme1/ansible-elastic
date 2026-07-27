@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: security_api_key_info
 short_description: Retrieve information about Elasticsearch API keys
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Retrieve a single API key by ID or name, or list all API keys.
   - This module always reports C(changed=False).

@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: ingest_pipeline
 short_description: Manage Elasticsearch ingest pipelines
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - Create, update, and delete Elasticsearch ingest pipeline resources.
   - Supports check mode and diff mode for safe operations.

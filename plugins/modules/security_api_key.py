@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: security_api_key
 short_description: Manage Elasticsearch API keys
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create and delete Elasticsearch API keys.
   - API keys cannot be updated. Use C(state=present) to create a key if it does

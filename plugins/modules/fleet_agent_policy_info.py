@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: fleet_agent_policy_info
 short_description: Retrieve information about Fleet agent policies
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Retrieve a single Fleet agent policy by its identifier, or list all agent policies.
   - This module always reports C(changed=False).

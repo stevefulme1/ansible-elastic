@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: kibana_slo
 short_description: Manage Kibana SLO resources
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete Kibana Service Level Objective (SLO) resources.
   - Supports check mode and diff mode for safe operations.

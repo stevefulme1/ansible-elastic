@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: kibana_space_info
 short_description: Retrieve information about Kibana spaces
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Retrieve a single Kibana space by its identifier, or list all spaces.
   - This module always reports C(changed=False).

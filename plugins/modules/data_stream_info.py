@@ -13,7 +13,7 @@ DOCUMENTATION = r"""
 module: data_stream_info
 short_description: >-
   Retrieve information about Elasticsearch data streams
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - >-
     Retrieve a single data stream by name,

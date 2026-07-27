@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: kibana_saved_object
 short_description: Manage Kibana saved objects
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete Kibana saved object resources.
   - Supports check mode and diff mode for safe operations.

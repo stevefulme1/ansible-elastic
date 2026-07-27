@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: fleet_server_host_info
 short_description: Retrieve information about Fleet server hosts
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Retrieve a single Fleet server host by its identifier, or list all server hosts.
   - This module always reports C(changed=False).

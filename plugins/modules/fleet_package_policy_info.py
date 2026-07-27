@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: fleet_package_policy_info
 short_description: Retrieve information about Fleet package policies
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Retrieve a single Fleet package policy by its identifier, or list all package policies.
   - This module always reports C(changed=False).

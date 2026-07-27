@@ -13,7 +13,7 @@ DOCUMENTATION = r"""
 module: transform_info
 short_description: >-
   Retrieve information about Elasticsearch transforms
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - >-
     Retrieve a single transform by its identifier,

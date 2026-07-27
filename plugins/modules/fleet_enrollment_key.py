@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: fleet_enrollment_key
 short_description: Manage Fleet enrollment API keys
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create and delete Fleet enrollment API key resources.
   - Enrollment keys cannot be updated; only create and delete are supported.

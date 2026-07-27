@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: kibana_space
 short_description: Manage Kibana spaces
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete Kibana space resources.
   - Supports check mode and diff mode for safe operations.

@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: kibana_connector_info
 short_description: Retrieve information about Kibana connectors
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Retrieve a single Kibana connector by its identifier, or list all connectors.
   - This module always reports C(changed=False).

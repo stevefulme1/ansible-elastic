@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: kibana_maintenance_window
 short_description: Manage Kibana maintenance windows
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete Kibana maintenance window resources.
   - Supports check mode and diff mode for safe operations.

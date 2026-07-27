@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: security_timeline
 short_description: Manage Kibana Security SIEM timelines
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete Kibana Security SIEM timeline resources.
   - Supports check mode and diff mode for safe operations.

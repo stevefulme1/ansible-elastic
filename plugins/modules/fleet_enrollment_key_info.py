@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: fleet_enrollment_key_info
 short_description: Retrieve information about Fleet enrollment API keys
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Retrieve a single Fleet enrollment key by its identifier, or list all enrollment keys.
   - This module always reports C(changed=False).

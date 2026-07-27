@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: fleet_agent_policy
 short_description: Manage Fleet agent policies
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - Create, update, and delete Fleet agent policy resources.
   - Supports check mode and diff mode for safe operations.

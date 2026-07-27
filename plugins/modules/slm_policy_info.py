@@ -13,7 +13,7 @@ DOCUMENTATION = r"""
 module: slm_policy_info
 short_description: >-
   Retrieve information about SLM (Snapshot Lifecycle Management) policies
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - >-
     Retrieve a single SLM policy by its identifier,

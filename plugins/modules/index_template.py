@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: index_template
 short_description: Manage Elasticsearch index templates
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - Create, update, and delete index template resources.
   - Supports check mode and diff mode for safe operations.

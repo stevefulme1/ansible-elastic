@@ -13,7 +13,7 @@ DOCUMENTATION = r"""
 module: security_exception_info
 short_description: >-
   Retrieve information about Kibana Security exception lists
-version_added: "1.0.0"
+version_added: "0.2.0"
 description:
   - >-
     Retrieve a single exception list by its list_id or exception_id,

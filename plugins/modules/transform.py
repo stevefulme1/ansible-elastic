@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: transform
 short_description: Manage Elasticsearch transforms
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - Create, update, and delete transform resources.
   - Supports check mode and diff mode for safe operations.

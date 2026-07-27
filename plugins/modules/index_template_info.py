@@ -13,7 +13,7 @@ DOCUMENTATION = r"""
 module: index_template_info
 short_description: >-
   Retrieve information about Elasticsearch index templates
-version_added: "1.0.0"
+version_added: "0.1.0"
 description:
   - >-
     Retrieve a single index template by its name,

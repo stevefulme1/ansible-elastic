@@ -4,6 +4,40 @@ Collection Release Notes
 
 .. contents:: Topics
 
+v0.3.0
+======
+
+Release Summary
+---------------
+
+Quality and correctness release. Three review rounds resolved all remaining
+API endpoint bugs, idempotency issues, hallucinated parameters, and test gaps.
+Collection is production-ready.
+
+Bugfixes
+--------
+
+- Fixed ``hmac.new`` to ``hmac.HMAC`` in webhook event source (Python crash).
+- Fixed index_template idempotency by unwrapping nested response key.
+- Fixed watcher ``active`` param to use ``_activate``/``_deactivate`` endpoints.
+- Fixed connector update to use field-specific sub-APIs.
+- Fixed maintenance_window to use public API path.
+- Fixed kibana_case DELETE to pass ids as query params not JSON body.
+- Fixed security_detection_rule ``interval`` default breaking idempotency.
+- Removed hallucinated ``field_access_pattern`` from ingest_pipeline.
+- Fixed 404 detection to use ``status_code`` across all modules.
+- Added ``force_basic_auth`` to API client for preemptive auth headers.
+- Added pagination to kibana_alerting_rule and slo name lookups.
+
+Minor Changes
+-------------
+
+- Added ``module_defaults`` action_groups support for shared auth config.
+- Added ``required_if`` and ``required_one_of`` constraints across modules.
+- Filled empty DOCUMENTATION descriptions in index_template, connector, transform.
+- Added LICENSE file.
+- Improved SECURITY.md with private vulnerability reporting.
+
 v0.2.0
 ======
 

@@ -31,5 +31,7 @@ releases:
         - Fixed CONTRIBUTING.md bug report link to point to this repo.
         - Fixed README authentication docs (``api_token`` corrected to ``api_key``).
       bugfixes:
-        - Fixed ``X-API-Key`` authentication header — Elasticsearch uses ``Authorization: ApiKey``.
-        - Fixed ``api_url`` defaulting to empty string causing silent failures.
+        - >-
+          Fixed X-API-Key authentication header to use the correct
+          Elasticsearch Authorization ApiKey format.
+        - Fixed api_url defaulting to empty string causing silent failures.

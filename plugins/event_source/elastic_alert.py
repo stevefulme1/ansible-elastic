@@ -66,14 +66,14 @@ EXAMPLES = r"""
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Dict
 
 import aiohttp
 
 logger = logging.getLogger("stevefulme1.elastic.elastic_alert")
 
 
-async def main(queue: asyncio.Queue, args: dict[str, Any]) -> None:
+async def main(queue: asyncio.Queue, args: Dict[str, Any]) -> None:
     """Poll Kibana Alerting API and push fired-rule events to *queue*."""
 
     api_url = args["api_url"].rstrip("/")
@@ -102,7 +102,7 @@ async def main(queue: asyncio.Queue, args: dict[str, Any]) -> None:
                     "per_page": "100",
                 }
 
-                url = f"{api_url}/api/alerting/rules/_find"
+                url = f"{api_url}/api/alerting/rule/_find"
                 async with session.get(url, params=params, ssl=ssl) as resp:
                     resp.raise_for_status()
                     payload = await resp.json()
@@ -116,7 +116,7 @@ async def main(queue: asyncio.Queue, args: dict[str, Any]) -> None:
                     last_exec = exec_status.get("lastExecutionDate", "")
 
                     # Only emit if execution happened after our last check
-                    if last_exec <= last_check:
+                    if not last_exec or last_exec <= last_check:
                         continue
 
                     # Only emit active or error statuses

@@ -62,7 +62,7 @@ EXAMPLES = r"""
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Dict, List
 
 import aiohttp
 
@@ -71,7 +71,7 @@ logger = logging.getLogger("stevefulme1.elastic.elastic_siem")
 VALID_SEVERITIES = {"low", "medium", "high", "critical"}
 
 
-def _build_search_body(last_check: str, severity_filter: list[str], max_signals: int) -> dict:
+def _build_search_body(last_check: str, severity_filter: List[str], max_signals: int) -> dict:
     """Build the Elasticsearch query body for the signals search."""
 
     filters = [
@@ -123,7 +123,7 @@ def _extract_signal(hit: dict) -> dict:
     }
 
 
-async def main(queue: asyncio.Queue, args: dict[str, Any]) -> None:
+async def main(queue: asyncio.Queue, args: Dict[str, Any]) -> None:
     """Poll Kibana SIEM Detection Engine and push signal events to *queue*."""
 
     api_url = args["api_url"].rstrip("/")

@@ -266,7 +266,6 @@ def main():
 
             active=dict(
                 type="bool",
-                default=True,
             ),
         )
     )
@@ -302,7 +301,8 @@ def main():
                         path,
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    if isinstance(response, dict):
+                        result["api_response"] = response
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -317,7 +317,8 @@ def main():
                         path,
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    if isinstance(response, dict):
+                        result["api_response"] = response
 
             else:
                 # Resource exists and is up-to-date

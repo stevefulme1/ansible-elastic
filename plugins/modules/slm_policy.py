@@ -214,7 +214,8 @@ def main():
                         "/_slm/policy/{0}".format(policy_id),
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    if isinstance(response, dict):
+                        result["api_response"] = response
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -227,7 +228,8 @@ def main():
                         "/_slm/policy/{0}".format(policy_id),
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    if isinstance(response, dict):
+                        result["api_response"] = response
 
             else:
                 # Resource exists and is up-to-date

@@ -1,0 +1,39 @@
+---
+# Example EDA rulebook: Receive Elastic webhook alerts and trigger remediation
+#
+# Configure an Elastic Watcher or Kibana alerting rule to send a webhook
+# action to this EDA listener. The webhook payload is parsed and matched
+# by the rules below.
+#
+# Usage:
+#   ansible-rulebook --rulebook elastic_webhook_remediation.yml \
+#     -i inventory.yml --vars webhook_secret=changeme
+- name: Elastic webhook remediation
+  hosts: all
+  sources:
+    - stevefulme1.elastic.elastic_webhook:
+        host: "0.0.0.0"
+        port: 5000
+        token: "{{ webhook_secret | default(omit) }}"
+
+  rules:
+    - name: Disk space alert from Watcher
+      condition: event.elastic_webhook.watch_id is defined and "disk" in event.elastic_webhook.watch_id
+      action:
+        run_playbook:
+          name: remediate_disk_space.yml
+
+    - name: High severity Kibana alert
+      condition: >-
+        event.elastic_webhook.rule is defined and
+        event.elastic_webhook.rule.severity is defined and
+        event.elastic_webhook.rule.severity in ["high", "critical"]
+      action:
+        run_playbook:
+          name: escalate_alert.yml
+
+    - name: Log all other webhook events
+      condition: event.elastic_webhook is defined
+      action:
+        debug:
+          msg: "Received Elastic webhook: {{ event.elastic_webhook }}"

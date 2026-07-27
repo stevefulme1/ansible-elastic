@@ -68,7 +68,7 @@ EXAMPLES = r"""
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Dict, List
 
 import aiohttp
 
@@ -79,12 +79,12 @@ VALID_STATUSES = {"executed", "throttled", "failed"}
 
 def _build_search_body(
     last_check: str,
-    status_filter: list[str],
-    watch_id_filter: list[str],
+    status_filter: List[str],
+    watch_id_filter: List[str],
 ) -> dict:
     """Build the Elasticsearch query body for watcher history search."""
 
-    filters: list[dict] = [
+    filters = [
         {"range": {"result.execution_time": {"gte": last_check}}},
     ]
 
@@ -142,7 +142,7 @@ async def _check_watcher_running(session: aiohttp.ClientSession, api_url: str, s
         return False
 
 
-async def main(queue: asyncio.Queue, args: dict[str, Any]) -> None:
+async def main(queue: asyncio.Queue, args: Dict[str, Any]) -> None:
     """Poll Elasticsearch Watcher history and push execution events to *queue*."""
 
     api_url = args["api_url"].rstrip("/")

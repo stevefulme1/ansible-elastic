@@ -94,8 +94,8 @@ class TestFetchSingle:
         client = MagicMock()
         client.get.side_effect = ClientError("Server error", status_code=500)
 
-        result = kibana_alerting_rule_info.fetch_single(client, "rule-123")
-        assert result is None
+        with pytest.raises(ClientError):
+            kibana_alerting_rule_info.fetch_single(client, "test-id")
 
 
 class TestFetchList:
@@ -143,8 +143,8 @@ class TestFetchList:
         module = MagicMock()
         module.params = {"page": None, "page_size": None}
 
-        result = kibana_alerting_rule_info.fetch_list(client, module)
-        assert result == []
+        with pytest.raises(ClientError):
+            kibana_alerting_rule_info.fetch_list(client, module)
 
 
 class TestMainSingle:

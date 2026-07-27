@@ -13,11 +13,13 @@ CLIENT_PATH = "ansible_collections.stevefulme1.elastic.plugins.module_utils.api_
 def _build_resource(**overrides):
     """Return a mock index_template resource dict."""
     base = {
-        "id": "res-123",
-        "_meta": "test-_meta",
-        "allow_auto_create": "test-allow_auto_create",
-        "composed_of": "test-composed_of",
-        "data_stream": "test-data_stream"
+        "name": "test-template",
+        "index_template": {
+            "_meta": "test-_meta",
+            "allow_auto_create": "test-allow_auto_create",
+            "composed_of": "test-composed_of",
+            "data_stream": "test-data_stream"
+        }
     }
     base.update(overrides)
     return base
@@ -28,6 +30,7 @@ def resource_args(module_args):
     """Module args for index_template operations."""
     module_args.update({
         "state": "present",
+        "name": "test-template",
         "api_key": "test-api-key",
         "api_url": "https://api.example.com",
         "validate_certs": True,
@@ -51,10 +54,10 @@ class TestGetCurrentState:
 
     def test_returns_matching_resource(self, resource_args):
         """get_current_state returns existing resource when found."""
-        resource_args["id"] = "res-123"
+        resource_args["name"] = "test-template"
         mock_client = MagicMock()
         existing = _build_resource()
-        mock_client.get.return_value = {"items": [existing]}
+        mock_client.get.return_value = {"index_templates": [existing]}
 
         mock_module = MagicMock()
         mock_module.params = resource_args
@@ -64,23 +67,23 @@ class TestGetCurrentState:
         assert result is not None
 
     def test_returns_none_when_not_found(self, resource_args):
-        """get_current_state returns None when resource does not exist."""
-        resource_args["id"] = "res-123"
+        """get_current_state returns None when resource does not exist (404)."""
+        resource_args["name"] = "test-template"
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import get_current_state
+        from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+
         mock_client = MagicMock()
-        mock_client.get.return_value = {"items": []}
+        mock_client.get.side_effect = ClientError("404 not found")
 
         mock_module = MagicMock()
         mock_module.params = resource_args
 
-        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import get_current_state
         result = get_current_state(mock_client, mock_module)
         assert result is None
 
     def test_returns_none_when_no_search_value(self, resource_args):
         """get_current_state returns None when search value is missing."""
-        for k in ("id", "name", "id"):
-            if k in resource_args:
-                resource_args[k] = None
+        resource_args["name"] = None
 
         mock_client = MagicMock()
         mock_module = MagicMock()
@@ -90,20 +93,35 @@ class TestGetCurrentState:
         result = get_current_state(mock_client, mock_module)
         assert result is None
 
-    def test_handles_client_error(self, resource_args):
-        """get_current_state returns None on API error."""
-        resource_args["id"] = "res-123"
+    def test_handles_client_error_404(self, resource_args):
+        """get_current_state returns None on 404 error."""
+        resource_args["name"] = "test-template"
         from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import get_current_state
         from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
 
         mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("API error")
+        mock_client.get.side_effect = ClientError("404 not found")
 
         mock_module = MagicMock()
         mock_module.params = resource_args
 
         result = get_current_state(mock_client, mock_module)
         assert result is None
+
+    def test_raises_on_non_404_client_error(self, resource_args):
+        """get_current_state raises ClientError on non-404 errors."""
+        resource_args["name"] = "test-template"
+        from ansible_collections.stevefulme1.elastic.plugins.modules.index_template import get_current_state
+        from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+
+        mock_client = MagicMock()
+        mock_client.get.side_effect = ClientError("500 server error")
+
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
+        with pytest.raises(ClientError):
+            get_current_state(mock_client, mock_module)
 
 
 class TestNeedsUpdate:
@@ -177,8 +195,7 @@ class TestCreate:
         mock_ansible_cls.return_value = mock_module
 
         mock_client = MagicMock()
-        mock_client.get.return_value = {"results": []}
-        mock_client.POST.return_value = _build_resource()
+        mock_client.put.return_value = {"acknowledged": True}
         mock_client_cls.return_value = mock_client
 
         # Patch get_current_state to return None (new resource)
@@ -207,7 +224,7 @@ class TestCreate:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is True
-        mock_client.POST.assert_not_called()
+        mock_client.put.assert_not_called()
 
 
 class TestDelete:
@@ -322,7 +339,7 @@ class TestIdempotent:
         # Build existing resource that matches all desired params
         existing = _build_resource()
         for k, v in resource_args.items():
-            if v is not None and k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
+            if v is not None and k not in ("state", "name", "api_key", "api_url", "validate_certs", "request_timeout"):
                 existing[k] = v
 
         with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
@@ -332,5 +349,4 @@ class TestIdempotent:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is False
-        mock_client.POST.assert_not_called()
         mock_client.put.assert_not_called()

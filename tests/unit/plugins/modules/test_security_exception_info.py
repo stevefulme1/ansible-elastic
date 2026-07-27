@@ -154,14 +154,14 @@ class TestFetchList:
         assert result == []
 
     def test_list_client_error(self):
-        """Return empty list on ClientError."""
+        """Re-raise non-404 ClientError from fetch_list."""
         client = MagicMock()
         client.get.side_effect = ClientError("Server error", status_code=500)
         module = MagicMock()
         module.params = {"page": None, "page_size": None}
 
-        result = security_exception_info.fetch_list(client, module)
-        assert result == []
+        with pytest.raises(ClientError):
+            security_exception_info.fetch_list(client, module)
 
 
 class TestMainSingle:

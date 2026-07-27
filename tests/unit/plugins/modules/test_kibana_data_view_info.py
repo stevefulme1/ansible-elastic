@@ -87,8 +87,8 @@ class TestFetchList:
         client = MagicMock()
         client.get.side_effect = ClientError("Server error", status_code=500)
 
-        result = kibana_data_view_info.fetch_list(client)
-        assert result == []
+        with pytest.raises(ClientError):
+            kibana_data_view_info.fetch_list(client)
 
 
 class TestMainSingle:

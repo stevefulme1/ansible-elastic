@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+import pytest
 from unittest.mock import MagicMock, patch
 
 from ansible_collections.stevefulme1.elastic.plugins.modules import security_api_key_info
@@ -39,12 +40,19 @@ class TestFetchSingle:
         result = security_api_key_info.fetch_single(client, key_id="nonexistent")
         assert result is None
 
-    def test_returns_none_on_error(self):
+    def test_returns_none_on_404(self):
         client = MagicMock()
-        client.get.side_effect = ClientError("Error", status_code=500)
+        client.get.side_effect = ClientError("Not found", status_code=404)
 
         result = security_api_key_info.fetch_single(client, key_id="bad")
         assert result is None
+
+    def test_raises_on_non_404_error(self):
+        client = MagicMock()
+        client.get.side_effect = ClientError("Server error", status_code=500)
+
+        with pytest.raises(ClientError):
+            security_api_key_info.fetch_single(client, key_id="bad")
 
 
 class TestFetchList:
@@ -61,13 +69,21 @@ class TestFetchList:
         result = security_api_key_info.fetch_list(client, module)
         assert len(result) == 2
 
-    def test_returns_empty_on_error(self):
+    def test_returns_empty_on_404(self):
         client = MagicMock()
-        client.get.side_effect = ClientError("Error")
+        client.get.side_effect = ClientError("Not found", status_code=404)
         module = MagicMock()
 
         result = security_api_key_info.fetch_list(client, module)
         assert result == []
+
+    def test_raises_on_non_404_error(self):
+        client = MagicMock()
+        client.get.side_effect = ClientError("Server error", status_code=500)
+        module = MagicMock()
+
+        with pytest.raises(ClientError):
+            security_api_key_info.fetch_list(client, module)
 
 
 class TestMain:

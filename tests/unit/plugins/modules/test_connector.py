@@ -33,6 +33,7 @@ def resource_args(module_args):
         "api_url": "https://api.example.com",
         "validate_certs": True,
         "request_timeout": 30,
+        "connector_id": None,
         "description": None,
         "index_name": None,
         "is_native": None,
@@ -49,10 +50,10 @@ class TestGetCurrentState:
     def test_returns_matching_resource(self, resource_args):
         """get_current_state returns existing resource when found."""
         resource_args["name"] = "test-name"
-        resource_args["id"] = None
+        resource_args["connector_id"] = None
         mock_client = MagicMock()
         existing = _build_resource()
-        mock_client.get.return_value = {"items": [existing]}
+        mock_client.get.return_value = {"results": [existing]}
 
         mock_module = MagicMock()
         mock_module.params = resource_args
@@ -64,9 +65,9 @@ class TestGetCurrentState:
     def test_returns_none_when_not_found(self, resource_args):
         """get_current_state returns None when resource does not exist."""
         resource_args["name"] = "test-name"
-        resource_args["id"] = None
+        resource_args["connector_id"] = None
         mock_client = MagicMock()
-        mock_client.get.return_value = {"items": []}
+        mock_client.get.return_value = {"results": []}
 
         mock_module = MagicMock()
         mock_module.params = resource_args
@@ -77,7 +78,7 @@ class TestGetCurrentState:
 
     def test_returns_none_when_no_search_value(self, resource_args):
         """get_current_state returns None when search value is missing."""
-        for k in ("id", "name", "name"):
+        for k in ("connector_id", "name"):
             if k in resource_args:
                 resource_args[k] = None
 
@@ -89,21 +90,53 @@ class TestGetCurrentState:
         result = get_current_state(mock_client, mock_module)
         assert result is None
 
-    def test_handles_client_error(self, resource_args):
-        """get_current_state returns None on API error."""
+    def test_handles_client_error_404(self, resource_args):
+        """get_current_state returns None on 404 error."""
         resource_args["name"] = "test-name"
-        resource_args["id"] = None
+        resource_args["connector_id"] = None
         from ansible_collections.stevefulme1.elastic.plugins.modules.connector import get_current_state
         from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
 
         mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("API error")
+        mock_client.get.side_effect = ClientError("404 not found")
 
         mock_module = MagicMock()
         mock_module.params = resource_args
 
         result = get_current_state(mock_client, mock_module)
         assert result is None
+
+    def test_handles_client_error_not_found(self, resource_args):
+        """get_current_state returns None on not_found error."""
+        resource_args["name"] = "test-name"
+        resource_args["connector_id"] = None
+        from ansible_collections.stevefulme1.elastic.plugins.modules.connector import get_current_state
+        from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+
+        mock_client = MagicMock()
+        mock_client.get.side_effect = ClientError("resource not_found")
+
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
+        result = get_current_state(mock_client, mock_module)
+        assert result is None
+
+    def test_raises_client_error_other(self, resource_args):
+        """get_current_state raises ClientError for non-404 errors."""
+        resource_args["name"] = "test-name"
+        resource_args["connector_id"] = None
+        from ansible_collections.stevefulme1.elastic.plugins.modules.connector import get_current_state
+        from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+
+        mock_client = MagicMock()
+        mock_client.get.side_effect = ClientError("500 internal server error")
+
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
+        with pytest.raises(ClientError):
+            get_current_state(mock_client, mock_module)
 
 
 class TestNeedsUpdate:
@@ -178,7 +211,7 @@ class TestCreate:
 
         mock_client = MagicMock()
         mock_client.get.return_value = {"results": []}
-        mock_client.POST.return_value = _build_resource()
+        mock_client.post.return_value = _build_resource()
         mock_client_cls.return_value = mock_client
 
         # Patch get_current_state to return None (new resource)
@@ -207,7 +240,7 @@ class TestCreate:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is True
-        mock_client.POST.assert_not_called()
+        mock_client.post.assert_not_called()
 
 
 class TestDelete:
@@ -332,5 +365,5 @@ class TestIdempotent:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is False
-        mock_client.POST.assert_not_called()
+        mock_client.post.assert_not_called()
         mock_client.put.assert_not_called()

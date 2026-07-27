@@ -32,6 +32,7 @@ def resource_args(module_args):
         "api_url": "https://api.example.com",
         "validate_certs": True,
         "request_timeout": 30,
+        "id": "res-123",
         "dest": "test-dest",
         "source": "test-source",
         "_meta": None,
@@ -66,8 +67,9 @@ class TestGetCurrentState:
     def test_returns_none_when_not_found(self, resource_args):
         """get_current_state returns None when resource does not exist."""
         resource_args["id"] = "res-123"
+        from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
         mock_client = MagicMock()
-        mock_client.get.return_value = {"items": []}
+        mock_client.get.side_effect = ClientError("404 Not Found", status_code=404)
 
         mock_module = MagicMock()
         mock_module.params = resource_args
@@ -78,7 +80,7 @@ class TestGetCurrentState:
 
     def test_returns_none_when_no_search_value(self, resource_args):
         """get_current_state returns None when search value is missing."""
-        for k in ("id", "name", "id"):
+        for k in ("id", "name"):
             if k in resource_args:
                 resource_args[k] = None
 
@@ -91,19 +93,19 @@ class TestGetCurrentState:
         assert result is None
 
     def test_handles_client_error(self, resource_args):
-        """get_current_state returns None on API error."""
+        """get_current_state re-raises non-404 ClientError."""
         resource_args["id"] = "res-123"
         from ansible_collections.stevefulme1.elastic.plugins.modules.transform import get_current_state
         from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
 
         mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("API error")
+        mock_client.get.side_effect = ClientError("Server error", status_code=500)
 
         mock_module = MagicMock()
         mock_module.params = resource_args
 
-        result = get_current_state(mock_client, mock_module)
-        assert result is None
+        with pytest.raises(ClientError):
+            get_current_state(mock_client, mock_module)
 
 
 class TestNeedsUpdate:
@@ -178,7 +180,7 @@ class TestCreate:
 
         mock_client = MagicMock()
         mock_client.get.return_value = {"results": []}
-        mock_client.POST.return_value = _build_resource()
+        mock_client.put.return_value = _build_resource()
         mock_client_cls.return_value = mock_client
 
         # Patch get_current_state to return None (new resource)
@@ -207,7 +209,7 @@ class TestCreate:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is True
-        mock_client.POST.assert_not_called()
+        mock_client.put.assert_not_called()
 
 
 class TestDelete:
@@ -332,5 +334,5 @@ class TestIdempotent:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is False
-        mock_client.POST.assert_not_called()
+        mock_client.post.assert_not_called()
         mock_client.put.assert_not_called()

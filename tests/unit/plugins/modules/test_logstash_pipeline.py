@@ -27,6 +27,7 @@ def _build_resource(**overrides):
 def resource_args(module_args):
     """Module args for logstash_pipeline operations."""
     module_args.update({
+        "id": "res-123",
         "state": "present",
         "api_key": "test-api-key",
         "api_url": "https://api.example.com",
@@ -50,7 +51,8 @@ class TestGetCurrentState:
         resource_args["id"] = "res-123"
         mock_client = MagicMock()
         existing = _build_resource()
-        mock_client.get.return_value = {"items": [existing]}
+        # Module expects response keyed by pipeline ID
+        mock_client.get.return_value = {"res-123": existing}
 
         mock_module = MagicMock()
         mock_module.params = resource_args
@@ -58,12 +60,14 @@ class TestGetCurrentState:
         from ansible_collections.stevefulme1.elastic.plugins.modules.logstash_pipeline import get_current_state
         result = get_current_state(mock_client, mock_module)
         assert result is not None
+        assert result["id"] == "res-123"
 
     def test_returns_none_when_not_found(self, resource_args):
         """get_current_state returns None when resource does not exist."""
         resource_args["id"] = "res-123"
         mock_client = MagicMock()
-        mock_client.get.return_value = {"items": []}
+        # Module expects response keyed by pipeline ID; empty dict when not found
+        mock_client.get.return_value = {}
 
         mock_module = MagicMock()
         mock_module.params = resource_args
@@ -74,7 +78,7 @@ class TestGetCurrentState:
 
     def test_returns_none_when_no_search_value(self, resource_args):
         """get_current_state returns None when search value is missing."""
-        for k in ("id", "name", "id"):
+        for k in ("id", "name"):
             if k in resource_args:
                 resource_args[k] = None
 
@@ -86,20 +90,39 @@ class TestGetCurrentState:
         result = get_current_state(mock_client, mock_module)
         assert result is None
 
-    def test_handles_client_error(self, resource_args):
-        """get_current_state returns None on API error."""
+    def test_handles_client_error_404(self, resource_args):
+        """get_current_state returns None on 404 error."""
         resource_args["id"] = "res-123"
         from ansible_collections.stevefulme1.elastic.plugins.modules.logstash_pipeline import get_current_state
         from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
 
         mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("API error")
+        error = ClientError("Not found")
+        error.status_code = 404
+        mock_client.get.side_effect = error
 
         mock_module = MagicMock()
         mock_module.params = resource_args
 
         result = get_current_state(mock_client, mock_module)
         assert result is None
+
+    def test_handles_client_error_non_404(self, resource_args):
+        """get_current_state raises non-404 ClientError."""
+        resource_args["id"] = "res-123"
+        from ansible_collections.stevefulme1.elastic.plugins.modules.logstash_pipeline import get_current_state
+        from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+
+        mock_client = MagicMock()
+        error = ClientError("Server error")
+        error.status_code = 500
+        mock_client.get.side_effect = error
+
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
+        with pytest.raises(ClientError):
+            get_current_state(mock_client, mock_module)
 
 
 class TestNeedsUpdate:
@@ -173,8 +196,8 @@ class TestCreate:
         mock_ansible_cls.return_value = mock_module
 
         mock_client = MagicMock()
-        mock_client.get.return_value = {"results": []}
-        mock_client.POST.return_value = _build_resource()
+        # Module uses PUT not POST for creation
+        mock_client.put.return_value = _build_resource()
         mock_client_cls.return_value = mock_client
 
         # Patch get_current_state to return None (new resource)
@@ -203,7 +226,8 @@ class TestCreate:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is True
-        mock_client.POST.assert_not_called()
+        # Module uses PUT not POST
+        mock_client.put.assert_not_called()
 
 
 class TestDelete:
@@ -328,5 +352,4 @@ class TestIdempotent:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is False
-        mock_client.POST.assert_not_called()
         mock_client.put.assert_not_called()

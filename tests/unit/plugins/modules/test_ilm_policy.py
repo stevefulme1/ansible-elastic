@@ -127,7 +127,7 @@ class TestCreate:
 
         mock_client = MagicMock()
         mock_client.get.return_value = {"results": []}
-        mock_client.POST.return_value = _build_resource()
+        mock_client.post.return_value = _build_resource()
         mock_client_cls.return_value = mock_client
 
         # Patch get_current_state to return None (new resource)
@@ -156,7 +156,7 @@ class TestCreate:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is True
-        mock_client.POST.assert_not_called()
+        mock_client.post.assert_not_called()
 
 
 class TestDelete:
@@ -281,5 +281,5 @@ class TestIdempotent:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is False
-        mock_client.POST.assert_not_called()
+        mock_client.post.assert_not_called()
         mock_client.put.assert_not_called()

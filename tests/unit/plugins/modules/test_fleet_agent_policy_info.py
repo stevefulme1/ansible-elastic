@@ -87,8 +87,8 @@ class TestFetchList:
         client = MagicMock()
         client.get.side_effect = ClientError("Server error", status_code=500)
 
-        result = fleet_agent_policy_info.fetch_list(client)
-        assert result == []
+        with pytest.raises(ClientError):
+            fleet_agent_policy_info.fetch_list(client)
 
 
 class TestMainSingle:

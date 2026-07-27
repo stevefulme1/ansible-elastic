@@ -147,8 +147,8 @@ class TestFetchList:
         module = MagicMock()
         module.params = {"page": None, "page_size": None}
 
-        result = kibana_case_info.fetch_list(client, module)
-        assert result == []
+        with pytest.raises(ClientError):
+            kibana_case_info.fetch_list(client, module)
 
 
 class TestMainSingle:

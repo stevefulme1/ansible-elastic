@@ -100,12 +100,12 @@ class TestFetchSingle:
         assert result is None
 
     def test_client_error(self):
-        """Return None when API raises ClientError."""
+        """Re-raise non-404 ClientError."""
         client = MagicMock()
         client.get.side_effect = ClientError("Server error", status_code=500)
 
-        result = security_detection_rule_info.fetch_single(client, "rule-abc-123")
-        assert result is None
+        with pytest.raises(ClientError):
+            security_detection_rule_info.fetch_single(client, "rule-abc-123")
 
 
 class TestFetchList:
@@ -147,14 +147,14 @@ class TestFetchList:
         assert result == []
 
     def test_list_client_error(self):
-        """Return empty list on ClientError."""
+        """Re-raise non-404 ClientError from fetch_list."""
         client = MagicMock()
         client.get.side_effect = ClientError("Server error", status_code=500)
         module = MagicMock()
         module.params = {"page": None, "page_size": None}
 
-        result = security_detection_rule_info.fetch_list(client, module)
-        assert result == []
+        with pytest.raises(ClientError):
+            security_detection_rule_info.fetch_list(client, module)
 
 
 class TestMainSingle:

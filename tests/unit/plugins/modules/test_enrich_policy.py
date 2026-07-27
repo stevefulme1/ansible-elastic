@@ -13,10 +13,11 @@ CLIENT_PATH = "ansible_collections.stevefulme1.elastic.plugins.module_utils.api_
 def _build_resource(**overrides):
     """Return a mock enrich_policy resource dict."""
     base = {
-        "id": "res-123",
-        "geo_match": "test-geo_match",
-        "match": "test-match",
-        "range": "test-range"
+        "config": {
+            "geo_match": {"indices": "test-index", "match_field": "location"},
+            "match": {"indices": "test-index", "match_field": "email"},
+            "range": {"indices": "test-index", "match_field": "age"}
+        }
     }
     base.update(overrides)
     return base
@@ -26,11 +27,13 @@ def _build_resource(**overrides):
 def resource_args(module_args):
     """Module args for enrich_policy operations."""
     module_args.update({
+        "name": "test-policy",
         "state": "present",
         "api_key": "test-api-key",
         "api_url": "https://api.example.com",
         "validate_certs": True,
         "request_timeout": 30,
+        "execute": False,
         "geo_match": None,
         "match": None,
         "range": None
@@ -43,10 +46,10 @@ class TestGetCurrentState:
 
     def test_returns_matching_resource(self, resource_args):
         """get_current_state returns existing resource when found."""
-        resource_args["id"] = "res-123"
+        resource_args["name"] = "test-policy"
         mock_client = MagicMock()
         existing = _build_resource()
-        mock_client.get.return_value = {"items": [existing]}
+        mock_client.get.return_value = {"policies": [existing]}
 
         mock_module = MagicMock()
         mock_module.params = resource_args
@@ -54,12 +57,13 @@ class TestGetCurrentState:
         from ansible_collections.stevefulme1.elastic.plugins.modules.enrich_policy import get_current_state
         result = get_current_state(mock_client, mock_module)
         assert result is not None
+        assert result == existing
 
     def test_returns_none_when_not_found(self, resource_args):
         """get_current_state returns None when resource does not exist."""
-        resource_args["id"] = "res-123"
+        resource_args["name"] = "test-policy"
         mock_client = MagicMock()
-        mock_client.get.return_value = {"items": []}
+        mock_client.get.return_value = {"policies": []}
 
         mock_module = MagicMock()
         mock_module.params = resource_args
@@ -70,9 +74,7 @@ class TestGetCurrentState:
 
     def test_returns_none_when_no_search_value(self, resource_args):
         """get_current_state returns None when search value is missing."""
-        for k in ("id", "name", "id"):
-            if k in resource_args:
-                resource_args[k] = None
+        resource_args["name"] = None
 
         mock_client = MagicMock()
         mock_module = MagicMock()
@@ -82,20 +84,39 @@ class TestGetCurrentState:
         result = get_current_state(mock_client, mock_module)
         assert result is None
 
-    def test_handles_client_error(self, resource_args):
-        """get_current_state returns None on API error."""
-        resource_args["id"] = "res-123"
+    def test_handles_client_error_404(self, resource_args):
+        """get_current_state returns None on 404 error."""
+        resource_args["name"] = "test-policy"
         from ansible_collections.stevefulme1.elastic.plugins.modules.enrich_policy import get_current_state
         from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
 
         mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("API error")
+        error = ClientError("Not found")
+        error.status_code = 404
+        mock_client.get.side_effect = error
 
         mock_module = MagicMock()
         mock_module.params = resource_args
 
         result = get_current_state(mock_client, mock_module)
         assert result is None
+
+    def test_raises_on_non_404_client_error(self, resource_args):
+        """get_current_state raises on non-404 ClientError."""
+        resource_args["name"] = "test-policy"
+        from ansible_collections.stevefulme1.elastic.plugins.modules.enrich_policy import get_current_state
+        from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
+
+        mock_client = MagicMock()
+        error = ClientError("Server error")
+        error.status_code = 500
+        mock_client.get.side_effect = error
+
+        mock_module = MagicMock()
+        mock_module.params = resource_args
+
+        with pytest.raises(ClientError):
+            get_current_state(mock_client, mock_module)
 
 
 class TestNeedsUpdate:
@@ -109,22 +130,22 @@ class TestNeedsUpdate:
     def test_returns_true_when_values_differ(self):
         """needs_update returns True when desired differs from current."""
         from ansible_collections.stevefulme1.elastic.plugins.modules.enrich_policy import needs_update
-        current = {"name": "old-name", "id": "123"}
-        desired = {"name": "new-name"}
+        current = {"config": {"match": {"indices": "old-index"}}}
+        desired = {"match": {"indices": "new-index"}}
         assert needs_update(current, desired) is True
 
     def test_returns_false_when_values_match(self):
         """needs_update returns False when desired matches current."""
         from ansible_collections.stevefulme1.elastic.plugins.modules.enrich_policy import needs_update
-        current = {"name": "same", "id": "123"}
-        desired = {"name": "same"}
+        current = {"config": {"match": {"indices": "same-index"}}}
+        desired = {"match": {"indices": "same-index"}}
         assert needs_update(current, desired) is False
 
     def test_ignores_none_values_in_desired(self):
         """needs_update ignores None values in desired dict."""
         from ansible_collections.stevefulme1.elastic.plugins.modules.enrich_policy import needs_update
-        current = {"name": "test", "description": "desc"}
-        desired = {"name": "test", "description": None}
+        current = {"config": {"match": {"indices": "test-index"}}}
+        desired = {"match": {"indices": "test-index"}, "range": None}
         assert needs_update(current, desired) is False
 
 
@@ -163,14 +184,14 @@ class TestCreate:
     @patch(f"{MODULE_PATH}.AnsibleModule")
     def test_create_sets_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
         """Creating a new resource sets changed=True."""
+        resource_args["match"] = {"indices": "test-index", "match_field": "email", "enrich_fields": ["name"]}
         mock_module = MagicMock()
         mock_module.params = resource_args
         mock_module.check_mode = False
         mock_ansible_cls.return_value = mock_module
 
         mock_client = MagicMock()
-        mock_client.get.return_value = {"results": []}
-        mock_client.POST.return_value = _build_resource()
+        mock_client.put.return_value = _build_resource()
         mock_client_cls.return_value = mock_client
 
         # Patch get_current_state to return None (new resource)
@@ -180,11 +201,13 @@ class TestCreate:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is True
+        assert "api_response" in mock_module.exit_json.call_args[1]
 
     @patch(f"{MODULE_PATH}.Client")
     @patch(f"{MODULE_PATH}.AnsibleModule")
     def test_create_check_mode_no_api_call(self, mock_ansible_cls, mock_client_cls, resource_args):
         """In check mode, no API call is made for create."""
+        resource_args["match"] = {"indices": "test-index", "match_field": "email"}
         mock_module = MagicMock()
         mock_module.params = resource_args
         mock_module.check_mode = True
@@ -199,7 +222,8 @@ class TestCreate:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is True
-        mock_client.POST.assert_not_called()
+        mock_client.put.assert_not_called()
+        mock_client.post.assert_not_called()
 
 
 class TestDelete:
@@ -276,17 +300,20 @@ class TestUpdate:
     @patch(f"{MODULE_PATH}.AnsibleModule")
     def test_update_when_changed(self, mock_ansible_cls, mock_client_cls, resource_args):
         """Updating a resource when values differ sets changed=True."""
-        resource_args["geo_match"] = "new-value"
+        resource_args["geo_match"] = {"indices": "new-index", "match_field": "location"}
         mock_module = MagicMock()
         mock_module.params = resource_args
         mock_module.check_mode = False
         mock_ansible_cls.return_value = mock_module
 
         mock_client = MagicMock()
-        mock_client.put.return_value = _build_resource(geo_match="new-value")
+        new_resource = _build_resource()
+        new_resource["config"]["geo_match"] = {"indices": "new-index", "match_field": "location"}
+        mock_client.put.return_value = new_resource
         mock_client_cls.return_value = mock_client
 
-        existing = _build_resource(geo_match="old-value")
+        existing = _build_resource()
+        existing["config"]["geo_match"] = {"indices": "old-index", "match_field": "location"}
         with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
              patch(f"{MODULE_PATH}.needs_update", return_value=True):
             from ansible_collections.stevefulme1.elastic.plugins.modules.enrich_policy import main
@@ -294,6 +321,9 @@ class TestUpdate:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is True
+        # Verify delete was called before recreate (immutable resource)
+        mock_client.delete.assert_called_once()
+        mock_client.put.assert_called_once()
 
 
 class TestIdempotent:
@@ -313,9 +343,6 @@ class TestIdempotent:
 
         # Build existing resource that matches all desired params
         existing = _build_resource()
-        for k, v in resource_args.items():
-            if v is not None and k not in ("state", "api_key", "api_url", "validate_certs", "request_timeout"):
-                existing[k] = v
 
         with patch(f"{MODULE_PATH}.get_current_state", return_value=existing), \
              patch(f"{MODULE_PATH}.needs_update", return_value=False):
@@ -324,5 +351,7 @@ class TestIdempotent:
 
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is False
-        mock_client.POST.assert_not_called()
+        assert "api_response" in mock_module.exit_json.call_args[1]
+        mock_client.post.assert_not_called()
         mock_client.put.assert_not_called()
+        mock_client.delete.assert_not_called()

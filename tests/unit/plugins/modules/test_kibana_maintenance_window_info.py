@@ -78,7 +78,7 @@ class TestFetchSingle:
 
         result = kibana_maintenance_window_info.fetch_single(client, "mw-123")
 
-        client.get.assert_called_once_with("/api/maintenance_window/mw-123")
+        client.get.assert_called_once_with("/internal/alerting/rules/maintenance_window/mw-123")
         assert result is not None
         assert result["id"] == "mw-123"
         assert result["title"] == "Planned Maintenance"
@@ -112,7 +112,7 @@ class TestFetchList:
 
         result = kibana_maintenance_window_info.fetch_list(client, module)
 
-        client.get.assert_called_once_with("/api/maintenance_window/_find", params={})
+        client.get.assert_called_once_with("/internal/alerting/rules/maintenance_window/_find", params={})
         assert len(result) == 2
         assert result[0]["id"] == "mw-1"
         assert result[1]["id"] == "mw-2"
@@ -127,8 +127,8 @@ class TestFetchList:
         result = kibana_maintenance_window_info.fetch_list(client, module)
 
         client.get.assert_called_once_with(
-            "/api/maintenance_window/_find",
-            params={"page": 2, "per_page": 10},
+            "/internal/alerting/rules/maintenance_window/_find",
+            params={"page": 2, "perPage": 10},
         )
         assert len(result) == 2
 
@@ -143,14 +143,14 @@ class TestFetchList:
         assert result == []
 
     def test_list_client_error(self):
-        """Return empty list on ClientError."""
+        """fetch_list re-raises non-404 API errors."""
         client = MagicMock()
         client.get.side_effect = ClientError("Server error", status_code=500)
         module = MagicMock()
         module.params = {"page": None, "page_size": None}
 
-        result = kibana_maintenance_window_info.fetch_list(client, module)
-        assert result == []
+        with pytest.raises(ClientError):
+            kibana_maintenance_window_info.fetch_list(client, module)
 
 
 class TestMainSingle:

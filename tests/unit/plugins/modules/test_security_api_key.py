@@ -190,13 +190,12 @@ class TestMain:
 
         mock_client = MagicMock()
         mock_client.get.return_value = {"api_keys": [existing_api_key]}
-        mock_client._request.return_value = {"invalidated_api_keys": ["key-id-123"]}
+        mock_client.delete.return_value = {"invalidated_api_keys": ["key-id-123"]}
         mock_client_cls.return_value = mock_client
 
         security_api_key.main()
 
-        mock_client._request.assert_called_once_with(
-            "DELETE",
+        mock_client.delete.assert_called_once_with(
             "/_security/api_key",
             data={"ids": ["key-id-123"]},
         )

@@ -84,8 +84,8 @@ class TestFetchSingle:
         client = MagicMock()
         client.get.side_effect = ClientError("Server error", status_code=500)
 
-        result = kibana_saved_object_info.fetch_single(client, "index-pattern", "test")
-        assert result is None
+        with pytest.raises(ClientError):
+            kibana_saved_object_info.fetch_single(client, "index-pattern", "test")
 
 
 class TestFetchList:
@@ -133,8 +133,8 @@ class TestFetchList:
         module = MagicMock()
         module.params = {"object_type": "index-pattern", "page": None, "page_size": None}
 
-        result = kibana_saved_object_info.fetch_list(client, module)
-        assert result == []
+        with pytest.raises(ClientError):
+            kibana_saved_object_info.fetch_list(client, module)
 
 
 class TestMainSingle:

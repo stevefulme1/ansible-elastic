@@ -71,13 +71,11 @@ options:
       - The relative start time for the rule look-back window.
       - Maps to the C(from) field in the API payload.
     type: str
-    default: "now-6m"
   to_time:
     description:
       - The relative end time for the rule look-back window.
       - Maps to the C(to) field in the API payload.
     type: str
-    default: "now"
   language:
     description:
       - The query language used by the rule.
@@ -87,13 +85,11 @@ options:
     description:
       - Whether the detection rule is enabled.
     type: bool
-    default: true
   tags:
     description:
       - A list of tags to categorize the detection rule.
     type: list
     elements: str
-    default: []
   filters:
     description:
       - A list of Elasticsearch filter objects applied to the rule query.
@@ -109,7 +105,6 @@ options:
       - A list of actions to execute when the rule generates an alert.
     type: list
     elements: dict
-    default: []
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
@@ -184,14 +179,26 @@ def get_current_state(client, module):
         if name is None:
             return None
         try:
-            response = client.get("/api/detection_engine/rules/_find")
-            items = response.get("data", [])
-            for item in items:
-                if item.get("name") == name:
-                    return item
+            page = 1
+            per_page = 100
+            while True:
+                response = client.get(
+                    "/api/detection_engine/rules/_find",
+                    params={"page": page, "per_page": per_page},
+                )
+                items = response.get("data", [])
+                for item in items:
+                    if item.get("name") == name:
+                        return item
+                total = response.get("total", 0)
+                if page * per_page >= total or not items:
+                    break
+                page += 1
             return None
-        except ClientError:
-            return None
+        except ClientError as e:
+            if getattr(e, "status_code", None) == 404:
+                return None
+            raise
 
     try:
         response = client.get(
@@ -201,8 +208,10 @@ def get_current_state(client, module):
         if isinstance(response, dict) and response.get("id"):
             return response
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if getattr(e, "status_code", None) == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -325,12 +334,10 @@ def main():
 
             from_time=dict(
                 type="str",
-                default="now-6m",
             ),
 
             to_time=dict(
                 type="str",
-                default="now",
             ),
 
             language=dict(
@@ -340,13 +347,11 @@ def main():
 
             enabled=dict(
                 type="bool",
-                default=True,
             ),
 
             tags=dict(
                 type="list",
                 elements="str",
-                default=[],
             ),
 
             filters=dict(
@@ -362,7 +367,6 @@ def main():
             actions=dict(
                 type="list",
                 elements="dict",
-                default=[],
             ),
         )
     )
@@ -372,6 +376,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ("name", "risk_score", "severity", "type")),
+        ],
         supports_check_mode=True,
     )
 
@@ -398,7 +405,7 @@ def main():
                         "/api/detection_engine/rules",
                         data=create_payload,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -413,7 +420,7 @@ def main():
                         "/api/detection_engine/rules",
                         data=update_payload,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response
 
             else:
                 # Resource exists and is up-to-date

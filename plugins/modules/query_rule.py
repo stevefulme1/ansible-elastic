@@ -11,7 +11,7 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: query_rule
-short_description: Manage query_rules
+short_description: Manage Elasticsearch query rulesets
 version_added: "1.0.0"
 description:
   - Create, update, and delete query rule resources.
@@ -25,46 +25,45 @@ options:
     type: str
     choices: ['present', 'absent']
     default: present
+  ruleset_id:
+    description:
+      - The unique identifier of the query ruleset.
+    type: str
   rules:
     description:
       - >-
-    type: dict
-    required: true
+        The list of rules that make up the query ruleset.
+    type: list
+    elements: dict
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-- name: Update a query rule
+- name: Create a query ruleset
   stevefulme1.elastic.query_rule:
-    ruleset_id: "existing_id"
+    ruleset_id: "my_ruleset"
+    rules:
+      - rule_id: "rule1"
+        type: "pinned"
+        criteria:
+          - type: "exact"
+            metadata: "query_string"
+            values: ["test"]
+        actions:
+          ids: ["id1"]
     state: present
-    # API:
-- name: Delete a query rule
+    # API: PUT /_query_rules/{ruleset_id}
+- name: Delete a query ruleset
   stevefulme1.elastic.query_rule:
-    ruleset_id: "existing_id"
+    ruleset_id: "my_ruleset"
     state: absent
     # API: DELETE /_query_rules/{ruleset_id}
 """
 
 RETURN = r"""
-ruleset_id:
-  description: >-
-  returned: success
-  type: str
-rule_total_count:
-  description: >-
-    The number of rules associated with the ruleset.
-  returned: success
-  type: float
-rule_criteria_types_counts:
-  description: >-
-    A map of criteria type (for example, exact) to the number of rules of that type. NOTE: The...
-  returned: success
-  type: dict
-rule_type_counts:
-  description: >-
-    A map of rule type (for example, pinned) to the number of rules of that type.
+api_response:
+  description: Raw API response from Elasticsearch.
   returned: success
   type: dict
 """
@@ -81,28 +80,16 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def get_current_state(client, module):
-    """Retrieve the current state of the query rule via GET."""
-
-    # No single-resource GET endpoint; fall back to list + filter
-    identifier = module.params.get("ruleset_id")
-
-    search_key = "ruleset_id"
-    search_value = identifier
-
-    if search_value is None:
+    """Retrieve the current state of the query ruleset via GET."""
+    ruleset_id = module.params.get("ruleset_id")
+    if ruleset_id is None:
         return None
     try:
-        items = client.get("/_query_rules")
-        if isinstance(items, dict):
-            items = items.get("results", items.get("data", items.get("items", [])))
-        for item in items:
-            if str(item.get(search_key)) == str(search_value):
-                return item
-            if str(item.get("ruleset_id")) == str(search_value):
-                return item
-        return None
-    except ClientError:
-        return None
+        return client.get("/_query_rules/{0}".format(ruleset_id))
+    except ClientError as e:
+        if "404" in str(e) or "not_found" in str(e).lower():
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -134,19 +121,14 @@ def main():
         dict(
             state=dict(type="str", choices=["present", "absent"], default="present"),
 
-            rules=dict(
-                type="dict",
-
-
-                required=True,
-
-
-
-
-
-
+            ruleset_id=dict(
+                type="str",
             ),
 
+            rules=dict(
+                type="list",
+                elements="dict",
+            ),
         )
     )
 
@@ -156,7 +138,10 @@ def main():
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
         supports_check_mode=True,
-
+        required_if=[
+            ("state", "present", ("ruleset_id", "rules")),
+            ("state", "absent", ("ruleset_id",)),
+        ],
     )
 
     state = module.params["state"]
@@ -165,6 +150,7 @@ def main():
     try:
         client = Client(module)
         current = get_current_state(client, module)
+        ruleset_id = module.params["ruleset_id"]
 
         if state == "present":
             desired = build_payload(module)
@@ -176,8 +162,11 @@ def main():
                 result["diff"]["after"] = desired
 
                 if not module.check_mode:
-
-                    pass
+                    response = client.put(
+                        "/_query_rules/{0}".format(ruleset_id),
+                        data=desired,
+                    )
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -186,29 +175,15 @@ def main():
                 result["diff"]["after"] = dict(current, **{k: v for k, v in desired.items() if v is not None})
 
                 if not module.check_mode:
-
-                    identifier = current.get("ruleset_id")
-                    path = "".replace(
-                        "{ruleset_id}", str(identifier)
-                    )
                     response = client.put(
-                        path,
+                        "/_query_rules/{0}".format(ruleset_id),
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             else:
                 # Resource exists and is up-to-date
-
-                result["ruleset_id"] = current.get("ruleset_id")
-
-                result["rule_total_count"] = current.get("rule_total_count")
-
-                result["rule_criteria_types_counts"] = current.get("rule_criteria_types_counts")
-
-                result["rule_type_counts"] = current.get("rule_type_counts")
-
-                pass
+                result["api_response"] = current
 
         elif state == "absent":
             if current is not None:
@@ -217,12 +192,7 @@ def main():
                 result["diff"]["after"] = {}
 
                 if not module.check_mode:
-
-                    identifier = current.get("ruleset_id")
-                    path = "/_query_rules/{ruleset_id}".replace(
-                        "{ruleset_id}", str(identifier)
-                    )
-                    client.delete(path)
+                    client.delete("/_query_rules/{0}".format(ruleset_id))
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

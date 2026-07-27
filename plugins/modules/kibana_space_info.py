@@ -64,8 +64,10 @@ def fetch_single(client, space_id):
     try:
         item = client.get("/api/spaces/space/{0}".format(space_id))
         return item if isinstance(item, dict) else None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def fetch_list(client):
@@ -73,8 +75,10 @@ def fetch_list(client):
     try:
         items = client.get("/api/spaces/space")
         return items if isinstance(items, list) else []
-    except ClientError:
-        return []
+    except ClientError as e:
+        if e.status_code == 404:
+            return []
+        raise
 
 
 def main():

@@ -84,8 +84,10 @@ def fetch_single(client, key_id=None, name=None):
         if api_keys:
             return api_keys[0]
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def fetch_list(client, module):
@@ -93,8 +95,10 @@ def fetch_list(client, module):
     try:
         response = client.get("/_security/api_key")
         return response.get("api_keys", [])
-    except ClientError:
-        return []
+    except ClientError as e:
+        if e.status_code == 404:
+            return []
+        raise
 
 
 def main():

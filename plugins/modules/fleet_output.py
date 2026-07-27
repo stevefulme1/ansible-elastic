@@ -33,14 +33,13 @@ options:
   name:
     description:
       - The display name for the output.
-      - Required when creating an output.
+      - Required when I(state=present).
     type: str
-    required: true
   type:
     description:
       - The output type.
     type: str
-    choices: ['elasticsearch', 'logstash', 'kafka']
+    choices: ['elasticsearch', 'logstash', 'kafka', 'remote_elasticsearch']
   hosts:
     description:
       - List of host URLs for the output.
@@ -90,7 +89,6 @@ EXAMPLES = r"""
 - name: Delete a Fleet output
   stevefulme1.elastic.fleet_output:
     output_id: "my-output-id"
-    name: "unused"
     state: absent
 """
 
@@ -119,8 +117,10 @@ def get_current_state(client, module):
         try:
             response = client.get("/api/fleet/outputs/{0}".format(output_id))
             return response.get("item", response)
-        except ClientError:
-            return None
+        except ClientError as e:
+            if e.status_code == 404:
+                return None
+            raise
     # Try to find by name in the list
     name = module.params.get("name")
     if name is None:
@@ -132,8 +132,10 @@ def get_current_state(client, module):
             if item.get("name") == name:
                 return item
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -183,8 +185,8 @@ def main():
         dict(
             state=dict(type="str", choices=["present", "absent"], default="present"),
             output_id=dict(type="str"),
-            name=dict(type="str", required=True),
-            type=dict(type="str", choices=["elasticsearch", "logstash", "kafka"]),
+            name=dict(type="str"),
+            type=dict(type="str", choices=["elasticsearch", "logstash", "kafka", "remote_elasticsearch"]),
             hosts=dict(type="list", elements="str"),
             is_default=dict(type="bool"),
             is_default_monitoring=dict(type="bool"),
@@ -198,6 +200,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ("name",)),
+        ],
         supports_check_mode=True,
     )
 

@@ -33,9 +33,8 @@ options:
   name:
     description:
       - The display name for the package policy.
-      - Required when creating a package policy.
+      - Required when I(state=present).
     type: str
-    required: true
   namespace:
     description:
       - The namespace for the package policy.
@@ -89,7 +88,6 @@ EXAMPLES = r"""
 - name: Delete a Fleet package policy
   stevefulme1.elastic.fleet_package_policy:
     package_policy_id: "my-package-policy-id"
-    name: "unused"
     state: absent
 """
 
@@ -118,8 +116,10 @@ def get_current_state(client, module):
         try:
             response = client.get("/api/fleet/package_policies/{0}".format(package_policy_id))
             return response.get("item", response)
-        except ClientError:
-            return None
+        except ClientError as e:
+            if e.status_code == 404:
+                return None
+            raise
     # Try to find by name in the list
     name = module.params.get("name")
     if name is None:
@@ -131,8 +131,10 @@ def get_current_state(client, module):
             if item.get("name") == name:
                 return item
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -179,7 +181,7 @@ def main():
         dict(
             state=dict(type="str", choices=["present", "absent"], default="present"),
             package_policy_id=dict(type="str"),
-            name=dict(type="str", required=True),
+            name=dict(type="str"),
             namespace=dict(type="str", default="default"),
             policy_id=dict(type="str"),
             package=dict(type="dict"),
@@ -193,6 +195,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ("name",)),
+        ],
         supports_check_mode=True,
     )
 
@@ -221,16 +226,22 @@ def main():
             elif needs_update(current, desired):
                 # Resource exists but needs updating
                 result["changed"] = True
+                merged = dict(current)
+                merged.update({k: v for k, v in desired.items() if v is not None})
+                # Strip read-only fields that the API rejects on PUT
+                for ro_field in ("id", "revision", "created_at", "created_by",
+                                 "updated_at", "updated_by", "version"):
+                    merged.pop(ro_field, None)
                 result["diff"]["before"] = current
-                result["diff"]["after"] = dict(current, **{k: v for k, v in desired.items() if v is not None})
+                result["diff"]["after"] = merged
 
                 if not module.check_mode:
                     pkg_id = current.get("id", module.params.get("package_policy_id"))
                     response = client.put(
                         "/api/fleet/package_policies/{0}".format(pkg_id),
-                        data=desired,
+                        data=merged,
                     )
-                    item = response.get("item", response) if isinstance(response, dict) else desired
+                    item = response.get("item", response) if isinstance(response, dict) else merged
                     result["package_policy"] = item
 
             else:

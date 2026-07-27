@@ -12,7 +12,7 @@ DOCUMENTATION = r"""
 ---
 module: transform_info
 short_description: >-
-  Retrieve information about transform resources
+  Retrieve information about Elasticsearch transforms
 version_added: "1.0.0"
 description:
   - >-
@@ -28,15 +28,15 @@ options:
       - When omitted, all transform resources are listed.
     type: str
     required: false
-  page:
+  from:
     description:
-      - Page number for paginated results.
+      - Starting offset for paginated results.
       - Only applies when listing resources.
     type: int
     required: false
-  page_size:
+  size:
     description:
-      - Number of results per page.
+      - Number of results to return.
       - Only applies when listing resources.
     type: int
     required: false
@@ -54,8 +54,8 @@ EXAMPLES = r"""
   register: result
 - name: List transform resources with pagination
   stevefulme1.elastic.transform_info:
-    page: 1
-    page_size: 50
+    from: 0
+    size: 50
   register: result
 """
 
@@ -68,7 +68,8 @@ transforms:
   contains:
     count:
       description: >-
-      type: float
+        Total number of transforms.
+      type: int
     transforms:
       description: >-
       type: list
@@ -87,36 +88,28 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 def fetch_single(client, identifier):
     """Retrieve a single transform by identifier."""
-
-    # No single-resource GET endpoint; filter from list
-    items = client.get("/_transform")
-    if isinstance(items, dict):
-        items = items.get("results", items.get("data", items.get("items", [])))
-    for item in items:
-        if str(item.get("id")) == str(identifier):
-            return item
-    return None
+    response = client.get("/_transform/{0}".format(identifier))
+    if isinstance(response, dict):
+        return response.get("transforms", [])
+    return []
 
 
 def fetch_list(client, module):
-    """List transform resources with optional filtering and pagination."""
-
+    """List transform resources with optional pagination."""
     params = {}
 
-    page = module.params.get("page")
-    page_size = module.params.get("page_size")
+    from_param = module.params.get("from")
+    size_param = module.params.get("size")
 
-    if page is not None or page_size is not None:
-        if page is not None:
-            params["page"] = page
-        if page_size is not None:
-            params["page_size"] = page_size
-        response = client.get("/_transform", params=params)
-        if isinstance(response, dict):
-            return response.get("results", response.get("data", response.get("items", [])))
-        return response if isinstance(response, list) else []
-    else:
-        return client.get_paginated("/_transform", params=params)
+    if from_param is not None:
+        params["from"] = from_param
+    if size_param is not None:
+        params["size"] = size_param
+
+    response = client.get("/_transform", params=params)
+    if isinstance(response, dict):
+        return response.get("transforms", [])
+    return response if isinstance(response, list) else []
 
 
 def main():
@@ -124,30 +117,8 @@ def main():
     spec.update(
         dict(
             id=dict(type="str", required=False),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            page=dict(type="int", required=False),
-            page_size=dict(type="int", required=False),
+            **{"from": dict(type="int", required=False)},
+            size=dict(type="int", required=False),
         )
     )
 
@@ -169,8 +140,7 @@ def main():
         identifier = module.params.get("id")
 
         if identifier is not None:
-            item = fetch_single(client, identifier)
-            result["transforms"] = [item] if item else []
+            result["transforms"] = fetch_single(client, identifier)
         else:
             result["transforms"] = fetch_list(client, module)
 

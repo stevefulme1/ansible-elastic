@@ -94,7 +94,7 @@ def fetch_single(client, timeline_id):
     """Retrieve a single timeline by identifier."""
     try:
         response = client.get(
-            "/api/timelines",
+            "/api/timeline",
             params={"id": timeline_id},
         )
         if isinstance(response, dict):
@@ -106,8 +106,10 @@ def fetch_single(client, timeline_id):
             elif isinstance(timeline, dict) and timeline.get("savedObjectId"):
                 return timeline
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def fetch_list(client, module):
@@ -127,8 +129,10 @@ def fetch_list(client, module):
         if isinstance(response, dict):
             return response.get("timeline", [])
         return response if isinstance(response, list) else []
-    except ClientError:
-        return []
+    except ClientError as e:
+        if e.status_code == 404:
+            return []
+        raise
 
 
 def main():

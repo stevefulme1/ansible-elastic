@@ -113,8 +113,10 @@ def get_current_state(client, module):
         if isinstance(response, dict) and username in response:
             return response[username]
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -194,6 +196,18 @@ def main():
 
             if current is None:
                 # Resource does not exist - create it
+                missing = []
+                if module.params.get("password") is None:
+                    missing.append("password")
+                if module.params.get("roles") is None:
+                    missing.append("roles")
+                if missing:
+                    module.fail_json(
+                        msg="Missing required parameters for user creation: {0}".format(
+                            ", ".join(missing)
+                        ),
+                        **result
+                    )
                 result["changed"] = True
                 result["diff"]["before"] = {}
                 # Do not leak password into diff
@@ -206,10 +220,12 @@ def main():
                         data=desired,
                     )
                     result["user"] = safe_desired
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
-            elif needs_update(current, desired):
+            elif needs_update(current, desired) or module.params.get("password") is not None:
                 # Resource exists but needs updating
+                # Password is always included when provided since the API
+                # never returns it, so we cannot detect whether it changed.
                 result["changed"] = True
                 result["diff"]["before"] = current
                 safe_desired = {k: v for k, v in desired.items() if k != "password"}
@@ -221,7 +237,7 @@ def main():
                         data=desired,
                     )
                     result["user"] = dict(current, **{k: v for k, v in safe_desired.items() if v is not None})
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             else:
                 # Resource exists and is up-to-date

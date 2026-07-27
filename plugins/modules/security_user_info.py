@@ -68,8 +68,10 @@ def fetch_single(client, username):
             user["username"] = username
             return user
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def fetch_list(client, module):

@@ -35,7 +35,6 @@ options:
     description:
       - The title of the case.
     type: str
-    required: true
   description:
     description:
       - The description of the case.
@@ -51,7 +50,6 @@ options:
       - The severity level of the case.
     type: str
     choices: ['low', 'medium', 'high', 'critical']
-    default: medium
   connector:
     description:
       - The connector configuration for the case.
@@ -68,7 +66,6 @@ options:
     description:
       - The owner of the case.
     type: str
-    default: cases
   status:
     description:
       - The status of the case.
@@ -118,6 +115,8 @@ version:
   type: str
 """
 
+import json
+
 from ansible.module_utils.basic import AnsibleModule
 from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import (
     Client,
@@ -140,8 +139,10 @@ def get_current_state(client, module):
         if isinstance(response, dict) and response.get("id"):
             return response
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -205,17 +206,16 @@ def main():
         dict(
             state=dict(type="str", choices=["present", "absent"], default="present"),
             case_id=dict(type="str"),
-            title=dict(type="str", required=True),
+            title=dict(type="str"),
             description=dict(type="str"),
             tags=dict(type="list", elements="str"),
             severity=dict(
                 type="str",
                 choices=["low", "medium", "high", "critical"],
-                default="medium",
             ),
             connector=dict(type="dict"),
             settings=dict(type="dict"),
-            owner=dict(type="str", default="cases"),
+            owner=dict(type="str"),
             status=dict(
                 type="str",
                 choices=["open", "in-progress", "closed"],
@@ -228,6 +228,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ["title"], True),
+        ],
         supports_check_mode=True,
     )
 
@@ -252,7 +255,7 @@ def main():
                         "/api/cases",
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             else:
                 desired = build_payload(module, for_create=False)
@@ -273,9 +276,9 @@ def main():
                             data={"cases": [update_body]},
                         )
                         if isinstance(response, list) and len(response) > 0:
-                            result.update(response[0])
+                            result["api_response"] = response[0]
                         elif isinstance(response, dict):
-                            result.update(response)
+                            result["api_response"] = response
 
                 else:
                     # Resource exists and is up-to-date
@@ -289,10 +292,9 @@ def main():
 
                 if not module.check_mode:
                     identifier = current.get("id")
-                    client._request(
-                        "DELETE",
+                    client.delete(
                         "/api/cases",
-                        data={"ids": [identifier]},
+                        params={"ids": json.dumps([identifier])},
                     )
 
     except ClientError as e:

@@ -12,31 +12,31 @@ DOCUMENTATION = r"""
 ---
 module: query_rule_info
 short_description: >-
-  Retrieve information about query rule resources
+  Retrieve information about Elasticsearch query rulesets
 version_added: "1.0.0"
 description:
   - >-
-    Retrieve a single query rule by its identifier,
-    or list all query rule resources.
+    Retrieve a single query ruleset by its identifier,
+    or list all query ruleset resources.
   - This module always reports C(changed=False).
 author:
   - "Steve Fulmer (@stevefulme1)"
 options:
   ruleset_id:
     description:
-      - The unique identifier of the query rule to retrieve.
-      - When omitted, all query rule resources are listed.
+      - The unique identifier of the query ruleset to retrieve.
+      - When omitted, all query ruleset resources are listed.
     type: str
     required: false
-  page:
+  from:
     description:
-      - Page number for paginated results.
+      - Starting offset for paginated results.
       - Only applies when listing resources.
     type: int
     required: false
-  page_size:
+  size:
     description:
-      - Number of results per page.
+      - Number of results to return.
       - Only applies when listing resources.
     type: int
     required: false
@@ -45,23 +45,23 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Get a specific query rule
+- name: Get a specific query ruleset
   stevefulme1.elastic.query_rule_info:
     ruleset_id: "example_id"
   register: result
-- name: List all query rule resources
+- name: List all query ruleset resources
   stevefulme1.elastic.query_rule_info:
   register: result
-- name: List query rule resources with pagination
+- name: List query ruleset resources with pagination
   stevefulme1.elastic.query_rule_info:
-    page: 1
-    page_size: 50
+    from: 0
+    size: 50
   register: result
 """
 
 RETURN = r"""
 query_rules:
-  description: List of query rule resources matching the query.
+  description: List of query ruleset resources matching the query.
   returned: always
   type: list
   elements: dict
@@ -72,10 +72,10 @@ query_rules:
     rule_total_count:
       description: >-
         The number of rules associated with the ruleset.
-      type: float
+      type: int
     rule_criteria_types_counts:
       description: >-
-        A map of criteria type (for example, exact) to the number of rules of that type. NOTE: The...
+        A map of criteria type (for example, exact) to the number of rules of that type.
       type: dict
     rule_type_counts:
       description: >-
@@ -94,38 +94,27 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 )
 
 
-def fetch_single(client, identifier):
-    """Retrieve a single query rule by identifier."""
-
-    # No single-resource GET endpoint; filter from list
-    items = client.get("/_query_rules")
-    if isinstance(items, dict):
-        items = items.get("results", items.get("data", items.get("items", [])))
-    for item in items:
-        if str(item.get("ruleset_id")) == str(identifier):
-            return item
-    return None
+def fetch_single(client, ruleset_id):
+    """Retrieve a single query ruleset by identifier."""
+    return client.get("/_query_rules/{0}".format(ruleset_id))
 
 
 def fetch_list(client, module):
-    """List query rule resources with optional filtering and pagination."""
-
+    """List query ruleset resources with optional pagination."""
     params = {}
 
-    page = module.params.get("page")
-    page_size = module.params.get("page_size")
+    from_param = module.params.get("from")
+    size_param = module.params.get("size")
 
-    if page is not None or page_size is not None:
-        if page is not None:
-            params["page"] = page
-        if page_size is not None:
-            params["page_size"] = page_size
-        response = client.get("/_query_rules", params=params)
-        if isinstance(response, dict):
-            return response.get("results", response.get("data", response.get("items", [])))
-        return response if isinstance(response, list) else []
-    else:
-        return client.get_paginated("/_query_rules", params=params)
+    if from_param is not None:
+        params["from"] = from_param
+    if size_param is not None:
+        params["size"] = size_param
+
+    response = client.get("/_query_rules", params=params)
+    if isinstance(response, dict):
+        return response.get("results", [])
+    return response if isinstance(response, list) else []
 
 
 def main():
@@ -133,12 +122,8 @@ def main():
     spec.update(
         dict(
             ruleset_id=dict(type="str", required=False),
-
-
-
-
-            page=dict(type="int", required=False),
-            page_size=dict(type="int", required=False),
+            **{"from": dict(type="int", required=False)},
+            size=dict(type="int", required=False),
         )
     )
 
@@ -157,10 +142,10 @@ def main():
 
     try:
         client = Client(module)
-        identifier = module.params.get("ruleset_id")
+        ruleset_id = module.params.get("ruleset_id")
 
-        if identifier is not None:
-            item = fetch_single(client, identifier)
+        if ruleset_id is not None:
+            item = fetch_single(client, ruleset_id)
             result["query_rules"] = [item] if item else []
         else:
             result["query_rules"] = fetch_list(client, module)

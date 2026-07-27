@@ -54,7 +54,6 @@ options:
       - A list of actions to execute when the rule condition is met.
     type: list
     elements: dict
-    default: []
   params:
     description:
       - The parameters for the rule type, such as query, threshold, and index settings.
@@ -65,12 +64,10 @@ options:
       - A list of tags to categorize the alerting rule.
     type: list
     elements: str
-    default: []
   enabled:
     description:
       - Whether the alerting rule is enabled and actively evaluating.
     type: bool
-    default: true
   throttle:
     description:
       - The throttle interval to limit how often actions are executed.
@@ -159,22 +156,26 @@ def get_current_state(client, module):
         if name is None:
             return None
         try:
-            response = client.get("/api/alerting/rules/_find")
+            response = client.get("/api/alerting/rule/_find")
             items = response.get("data", [])
             for item in items:
                 if item.get("name") == name:
                     return item
             return None
-        except ClientError:
-            return None
+        except ClientError as e:
+            if e.status_code == 404:
+                return None
+            raise
 
     try:
         response = client.get("/api/alerting/rule/{0}".format(rule_id))
         if isinstance(response, dict) and response.get("id"):
             return response
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -256,7 +257,6 @@ def main():
             actions=dict(
                 type="list",
                 elements="dict",
-                default=[],
             ),
 
             params=dict(
@@ -266,12 +266,10 @@ def main():
             tags=dict(
                 type="list",
                 elements="str",
-                default=[],
             ),
 
             enabled=dict(
                 type="bool",
-                default=True,
             ),
 
             throttle=dict(
@@ -289,6 +287,7 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[("state", "present", ["name"], True)],
         supports_check_mode=True,
     )
 
@@ -315,7 +314,7 @@ def main():
                         "/api/alerting/rule",
                         data=create_payload,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -330,7 +329,7 @@ def main():
                         path,
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             else:
                 # Resource exists and is up-to-date

@@ -99,8 +99,10 @@ def get_current_state(client, module):
         if isinstance(response, dict) and name in response:
             return response[name]
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -142,7 +144,7 @@ def main():
             state=dict(type="str", choices=["present", "absent"], default="present"),
             name=dict(type="str", required=True),
             roles=dict(type="list", elements="str"),
-            enabled=dict(type="bool", default=True),
+            enabled=dict(type="bool", default=None),
             rules=dict(type="dict"),
             metadata=dict(type="dict"),
         )
@@ -153,6 +155,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ("roles", "rules")),
+        ],
         supports_check_mode=True,
     )
 
@@ -179,7 +184,7 @@ def main():
                         data=desired,
                     )
                     result["role_mapping"] = desired
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -193,7 +198,7 @@ def main():
                         data=desired,
                     )
                     result["role_mapping"] = desired
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             else:
                 # Resource exists and is up-to-date

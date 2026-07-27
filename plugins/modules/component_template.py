@@ -11,14 +11,18 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: component_template
-short_description: Manage indices
+short_description: Manage Elasticsearch component templates
 version_added: "1.0.0"
 description:
-  - Create, update, and delete component template resources.
+  - Create, update, and delete Elasticsearch component template resources.
   - Supports check mode and diff mode for safe operations.
 author:
   - "Steve Fulmer (@stevefulme1)"
 options:
+  name:
+    description:
+      - Name of the component template.
+    type: str
   state:
     description:
       - Desired state of the component template resource.
@@ -27,12 +31,11 @@ options:
     default: present
   template:
     description:
-      - >-
+      - The template definition including mappings, settings, and aliases.
     type: dict
-    required: true
   _meta:
     description:
-      - >-
+      - Optional user metadata about the component template.
     type: dict
   deprecated:
     description:
@@ -41,8 +44,8 @@ options:
     type: bool
   version:
     description:
-      - >-
-    type: float
+      - Version number used to manage component templates externally.
+    type: int
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
@@ -50,29 +53,39 @@ extends_documentation_fragment:
 EXAMPLES = r"""
 - name: Create a component template
   stevefulme1.elastic.component_template:
-    template: "example_template"
+    name: "my_component_template"
+    template:
+      mappings:
+        properties:
+          timestamp:
+            type: date
     state: present
-    # API: POST /_component_template/{name}
+
 - name: Update a component template
   stevefulme1.elastic.component_template:
-    id: "existing_id"
-    _meta: "updated__meta"
-    deprecated: "updated_deprecated"
-    version: "updated_version"
+    name: "my_component_template"
+    template:
+      mappings:
+        properties:
+          timestamp:
+            type: date
+          message:
+            type: text
+    _meta:
+      description: "updated template"
     state: present
-    # API:
+
 - name: Delete a component template
   stevefulme1.elastic.component_template:
-    id: "existing_id"
+    name: "my_component_template"
     state: absent
-    # API: DELETE /_component_template/{name}
 """
 
 RETURN = r"""
-component_templates:
-  description: >-
+api_response:
+  description: Raw API response from Elasticsearch.
   returned: success
-  type: list
+  type: dict
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -88,37 +101,31 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 def get_current_state(client, module):
     """Retrieve the current state of the component template via GET."""
-
-    # No single-resource GET endpoint; fall back to list + filter
-    identifier = module.params.get("id")
-
-    search_key = "id"
-    search_value = identifier
-
-    if search_value is None:
+    name = module.params.get("name")
+    if name is None:
         return None
     try:
-        items = client.get("/_component_template")
-        if isinstance(items, dict):
-            items = items.get("results", items.get("data", items.get("items", [])))
-        for item in items:
-            if str(item.get(search_key)) == str(search_value):
-                return item
-            if str(item.get("id")) == str(search_value):
-                return item
+        response = client.get("/_component_template/{0}".format(name))
+        if isinstance(response, dict):
+            templates = response.get("component_templates", [])
+            if templates:
+                return templates[0]
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
     """Compare current state against desired params and return True if an update is needed."""
     if current is None:
         return True
+    current_template = current.get("component_template", {})
     for key, value in desired.items():
         if value is None:
             continue
-        current_value = current.get(key)
+        current_value = current_template.get(key)
         if current_value != value:
             return True
     return False
@@ -147,54 +154,12 @@ def main():
     spec = auth_argument_spec()
     spec.update(
         dict(
+            name=dict(type="str"),
             state=dict(type="str", choices=["present", "absent"], default="present"),
-
-            template=dict(
-                type="dict",
-
-
-                required=True,
-
-
-
-
-
-
-            ),
-
-            _meta=dict(
-                type="dict",
-
-
-
-
-
-
-
-            ),
-
-            deprecated=dict(
-                type="bool",
-
-
-
-
-
-
-
-            ),
-
-            version=dict(
-                type="float",
-
-
-
-
-
-
-
-            ),
-
+            template=dict(type="dict"),
+            _meta=dict(type="dict"),
+            deprecated=dict(type="bool"),
+            version=dict(type="int"),
         )
     )
 
@@ -203,11 +168,15 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ["state", "present", ["name", "template"]],
+            ["state", "absent", ["name"]],
+        ],
         supports_check_mode=True,
-
     )
 
     state = module.params["state"]
+    name = module.params["name"]
     result = dict(changed=False, diff=dict(before={}, after={}))
 
     try:
@@ -218,43 +187,34 @@ def main():
             desired = build_payload(module)
 
             if current is None:
-                # Resource does not exist — create it
+                # Resource does not exist -- create it
                 result["changed"] = True
                 result["diff"]["before"] = {}
                 result["diff"]["after"] = desired
 
                 if not module.check_mode:
-
-                    response = client.POST(
-                        "/_component_template/{name}",
+                    response = client.put(
+                        "/_component_template/{0}".format(name),
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
                 result["changed"] = True
                 result["diff"]["before"] = current
-                result["diff"]["after"] = dict(current, **{k: v for k, v in desired.items() if v is not None})
+                result["diff"]["after"] = desired
 
                 if not module.check_mode:
-
-                    identifier = current.get("id")
-                    path = "".replace(
-                        "{id}", str(identifier)
-                    )
                     response = client.put(
-                        path,
+                        "/_component_template/{0}".format(name),
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response
 
             else:
                 # Resource exists and is up-to-date
-
-                result["component_templates"] = current.get("component_templates")
-
-                pass
+                result["api_response"] = current
 
         elif state == "absent":
             if current is not None:
@@ -263,12 +223,7 @@ def main():
                 result["diff"]["after"] = {}
 
                 if not module.check_mode:
-
-                    identifier = current.get("id")
-                    path = "/_component_template/{name}".replace(
-                        "{id}", str(identifier)
-                    )
-                    client.delete(path)
+                    client.delete("/_component_template/{0}".format(name))
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

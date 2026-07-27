@@ -12,33 +12,21 @@ DOCUMENTATION = r"""
 ---
 module: ingest_pipeline_info
 short_description: >-
-  Retrieve information about ingest pipeline resources
+  Retrieve information about Elasticsearch ingest pipelines
 version_added: "1.0.0"
 description:
   - >-
     Retrieve a single ingest pipeline by its identifier,
-    or list all ingest pipeline resources.
+    or list all ingest pipelines.
   - This module always reports C(changed=False).
 author:
   - "Steve Fulmer (@stevefulme1)"
 options:
   id:
     description:
-      - The unique identifier of the ingest pipeline to retrieve.
-      - When omitted, all ingest pipeline resources are listed.
+      - The identifier of the ingest pipeline to retrieve.
+      - When omitted, all ingest pipelines are listed.
     type: str
-    required: false
-  page:
-    description:
-      - Page number for paginated results.
-      - Only applies when listing resources.
-    type: int
-    required: false
-  page_size:
-    description:
-      - Number of results per page.
-      - Only applies when listing resources.
-    type: int
     required: false
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
@@ -47,15 +35,11 @@ extends_documentation_fragment:
 EXAMPLES = r"""
 - name: Get a specific ingest pipeline
   stevefulme1.elastic.ingest_pipeline_info:
-    id: "example_id"
+    id: "my-pipeline"
   register: result
-- name: List all ingest pipeline resources
+
+- name: List all ingest pipelines
   stevefulme1.elastic.ingest_pipeline_info:
-  register: result
-- name: List ingest pipeline resources with pagination
-  stevefulme1.elastic.ingest_pipeline_info:
-    page: 1
-    page_size: 50
   register: result
 """
 
@@ -65,11 +49,6 @@ ingest_pipelines:
   returned: always
   type: list
   elements: dict
-  contains:
-    acknowledged:
-      description: >-
-        For a successful response, this value is always true. On failure, an exception is returned instead.
-      type: bool
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -85,36 +64,27 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 def fetch_single(client, identifier):
     """Retrieve a single ingest pipeline by identifier."""
-
-    # No single-resource GET endpoint; filter from list
-    items = client.get("/_ingest/pipeline")
-    if isinstance(items, dict):
-        items = items.get("results", items.get("data", items.get("items", [])))
-    for item in items:
-        if str(item.get("id")) == str(identifier):
-            return item
-    return None
+    response = client.get("/_ingest/pipeline/{0}".format(identifier))
+    # ES returns a dict keyed by pipeline ID
+    if isinstance(response, dict) and identifier in response:
+        pipeline = response[identifier]
+        pipeline["id"] = identifier
+        return [pipeline]
+    return []
 
 
-def fetch_list(client, module):
-    """List ingest pipeline resources with optional filtering and pagination."""
-
-    params = {}
-
-    page = module.params.get("page")
-    page_size = module.params.get("page_size")
-
-    if page is not None or page_size is not None:
-        if page is not None:
-            params["page"] = page
-        if page_size is not None:
-            params["page_size"] = page_size
-        response = client.get("/_ingest/pipeline", params=params)
-        if isinstance(response, dict):
-            return response.get("results", response.get("data", response.get("items", [])))
-        return response if isinstance(response, list) else []
-    else:
-        return client.get_paginated("/_ingest/pipeline", params=params)
+def fetch_list(client):
+    """List all ingest pipelines."""
+    response = client.get("/_ingest/pipeline")
+    # ES returns a dict keyed by pipeline ID
+    if isinstance(response, dict):
+        pipelines = []
+        for pid, pdata in response.items():
+            if isinstance(pdata, dict):
+                pdata["id"] = pid
+                pipelines.append(pdata)
+        return pipelines
+    return []
 
 
 def main():
@@ -122,24 +92,6 @@ def main():
     spec.update(
         dict(
             id=dict(type="str", required=False),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            page=dict(type="int", required=False),
-            page_size=dict(type="int", required=False),
         )
     )
 
@@ -161,10 +113,9 @@ def main():
         identifier = module.params.get("id")
 
         if identifier is not None:
-            item = fetch_single(client, identifier)
-            result["ingest_pipelines"] = [item] if item else []
+            result["ingest_pipelines"] = fetch_single(client, identifier)
         else:
-            result["ingest_pipelines"] = fetch_list(client, module)
+            result["ingest_pipelines"] = fetch_list(client)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

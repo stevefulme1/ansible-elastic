@@ -35,7 +35,6 @@ options:
       - The display name for the connector.
       - Required when creating a connector.
     type: str
-    required: true
   connector_type_id:
     description:
       - The connector type identifier, for example C(.slack), C(.email), or C(.webhook).
@@ -119,16 +118,24 @@ def get_current_state(client, module):
                     if item.get("name") == name:
                         return item
             return None
-        except ClientError:
-            return None
+        except ClientError as e:
+            if e.status_code == 404:
+                return None
+            raise
     try:
         return client.get("/api/actions/connector/{0}".format(connector_id))
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
-    """Compare current state against desired params and return True if an update is needed."""
+    """Compare current state against desired params and return True if an update is needed.
+
+    For config comparison, only compare keys the user explicitly supplied,
+    since the API may return additional computed config keys.
+    """
     if current is None:
         return True
     for key, value in desired.items():
@@ -138,7 +145,12 @@ def needs_update(current, desired):
         if key == "secrets":
             continue
         current_value = current.get(key)
-        if current_value != value:
+        if key == "config" and isinstance(value, dict) and isinstance(current_value, dict):
+            # Only compare user-supplied config keys
+            for config_key, config_val in value.items():
+                if current_value.get(config_key) != config_val:
+                    return True
+        elif current_value != value:
             return True
     return False
 
@@ -184,7 +196,7 @@ def main():
         dict(
             state=dict(type="str", choices=["present", "absent"], default="present"),
             connector_id=dict(type="str"),
-            name=dict(type="str", required=True),
+            name=dict(type="str"),
             connector_type_id=dict(type="str"),
             config=dict(type="dict"),
             secrets=dict(type="dict", no_log=True),
@@ -196,6 +208,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ["name"], True),
+        ],
         supports_check_mode=True,
     )
 

@@ -113,8 +113,10 @@ def get_current_state(client, module):
         try:
             response = client.get("/api/fleet/agent_policies/{0}".format(policy_id))
             return response.get("item", response)
-        except ClientError:
-            return None
+        except ClientError as e:
+            if e.status_code == 404:
+                return None
+            raise
     # Try to find by name in the list
     name = module.params.get("name")
     if name is None:
@@ -126,8 +128,10 @@ def get_current_state(client, module):
             if item.get("name") == name:
                 return item
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -174,8 +178,8 @@ def main():
         dict(
             state=dict(type="str", choices=["present", "absent"], default="present"),
             policy_id=dict(type="str"),
-            name=dict(type="str", required=True),
-            namespace=dict(type="str", default="default"),
+            name=dict(type="str"),
+            namespace=dict(type="str", default=None),
             description=dict(type="str"),
             monitoring_enabled=dict(type="list", elements="str"),
             is_managed=dict(type="bool"),
@@ -188,6 +192,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ("name",)),
+        ],
         supports_check_mode=True,
     )
 

@@ -11,7 +11,7 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: synonym
-short_description: Manage synonyms
+short_description: Manage Elasticsearch synonym sets
 version_added: "1.0.0"
 description:
   - Create, update, and delete synonym resources.
@@ -25,43 +25,49 @@ options:
     type: str
     choices: ['present', 'absent']
     default: present
+  id:
+    description:
+      - The unique identifier of the synonym set.
+    type: str
   synonyms:
     description:
       - >-
-    type: str
-    required: true
-  synonyms_set:
-    description:
-      - >-
-    type: dict
-    required: true
+        The list of synonym rules for this synonym set.
+    type: list
+    elements: dict
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-- name: Update a synonym
+- name: Create a synonym set
   stevefulme1.elastic.synonym:
-    id: "existing_id"
+    id: "my_synonyms"
+    synonyms:
+      - id: "rule1"
+        synonyms: "quick, fast, speedy"
     state: present
-    # API:
-- name: Delete a synonym
+    # API: PUT /_synonyms/{id}
+- name: Update a synonym set
   stevefulme1.elastic.synonym:
-    id: "existing_id"
+    id: "my_synonyms"
+    synonyms:
+      - id: "rule1"
+        synonyms: "quick, fast, speedy, rapid"
+    state: present
+    # API: PUT /_synonyms/{id}
+- name: Delete a synonym set
+  stevefulme1.elastic.synonym:
+    id: "my_synonyms"
     state: absent
-    # API: DELETE /_synonyms/{set_id}/{rule_id}
+    # API: DELETE /_synonyms/{id}
 """
 
 RETURN = r"""
-synonyms_set:
-  description: >-
+api_response:
+  description: Raw API response from Elasticsearch.
   returned: success
-  type: str
-count:
-  description: >-
-    Number of synonym rules that the synonym set contains
-  returned: success
-  type: float
+  type: dict
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -76,28 +82,16 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def get_current_state(client, module):
-    """Retrieve the current state of the synonym via GET."""
-
-    # No single-resource GET endpoint; fall back to list + filter
+    """Retrieve the current state of the synonym set via GET."""
     identifier = module.params.get("id")
-
-    search_key = "id"
-    search_value = identifier
-
-    if search_value is None:
+    if identifier is None:
         return None
     try:
-        items = client.get("/_synonyms")
-        if isinstance(items, dict):
-            items = items.get("results", items.get("data", items.get("items", [])))
-        for item in items:
-            if str(item.get(search_key)) == str(search_value):
-                return item
-            if str(item.get("id")) == str(search_value):
-                return item
-        return None
-    except ClientError:
-        return None
+        return client.get("/_synonyms/{0}".format(identifier))
+    except ClientError as e:
+        if "404" in str(e) or "not_found" in str(e).lower():
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -120,9 +114,6 @@ def build_payload(module):
     if module.params.get("synonyms") is not None:
         payload["synonyms"] = module.params["synonyms"]
 
-    if module.params.get("synonyms_set") is not None:
-        payload["synonyms_set"] = module.params["synonyms_set"]
-
     return payload
 
 
@@ -132,32 +123,14 @@ def main():
         dict(
             state=dict(type="str", choices=["present", "absent"], default="present"),
 
-            synonyms=dict(
+            id=dict(
                 type="str",
-
-
-                required=True,
-
-
-
-
-
-
             ),
 
-            synonyms_set=dict(
-                type="dict",
-
-
-                required=True,
-
-
-
-
-
-
+            synonyms=dict(
+                type="list",
+                elements="dict",
             ),
-
         )
     )
 
@@ -167,7 +140,10 @@ def main():
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
         supports_check_mode=True,
-
+        required_if=[
+            ("state", "present", ("id", "synonyms")),
+            ("state", "absent", ("id",)),
+        ],
     )
 
     state = module.params["state"]
@@ -176,6 +152,7 @@ def main():
     try:
         client = Client(module)
         current = get_current_state(client, module)
+        identifier = module.params["id"]
 
         if state == "present":
             desired = build_payload(module)
@@ -187,8 +164,11 @@ def main():
                 result["diff"]["after"] = desired
 
                 if not module.check_mode:
-
-                    pass
+                    response = client.put(
+                        "/_synonyms/{0}".format(identifier),
+                        data=desired,
+                    )
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -197,25 +177,15 @@ def main():
                 result["diff"]["after"] = dict(current, **{k: v for k, v in desired.items() if v is not None})
 
                 if not module.check_mode:
-
-                    identifier = current.get("id")
-                    path = "".replace(
-                        "{id}", str(identifier)
-                    )
                     response = client.put(
-                        path,
+                        "/_synonyms/{0}".format(identifier),
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             else:
                 # Resource exists and is up-to-date
-
-                result["synonyms_set"] = current.get("synonyms_set")
-
-                result["count"] = current.get("count")
-
-                pass
+                result["api_response"] = current
 
         elif state == "absent":
             if current is not None:
@@ -224,12 +194,7 @@ def main():
                 result["diff"]["after"] = {}
 
                 if not module.check_mode:
-
-                    identifier = current.get("id")
-                    path = "/_synonyms/{set_id}/{rule_id}".replace(
-                        "{id}", str(identifier)
-                    )
-                    client.delete(path)
+                    client.delete("/_synonyms/{0}".format(identifier))
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

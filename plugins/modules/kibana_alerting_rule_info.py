@@ -94,8 +94,10 @@ def fetch_single(client, rule_id):
         if isinstance(response, dict) and response.get("id"):
             return response
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def fetch_list(client, module):
@@ -111,12 +113,14 @@ def fetch_list(client, module):
         params["per_page"] = page_size
 
     try:
-        response = client.get("/api/alerting/rules/_find", params=params)
+        response = client.get("/api/alerting/rule/_find", params=params)
         if isinstance(response, dict):
             return response.get("data", [])
         return response if isinstance(response, list) else []
-    except ClientError:
-        return []
+    except ClientError as e:
+        if e.status_code == 404:
+            return []
+        raise
 
 
 def main():

@@ -111,8 +111,10 @@ def get_current_state(client, module):
         return None
     try:
         return client.get("/api/spaces/space/{0}".format(space_id))
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):

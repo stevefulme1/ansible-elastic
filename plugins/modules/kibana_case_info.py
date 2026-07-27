@@ -103,8 +103,10 @@ def fetch_single(client, identifier):
         if isinstance(response, dict) and response.get("id"):
             return response
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def fetch_list(client, module):
@@ -124,8 +126,10 @@ def fetch_list(client, module):
         if isinstance(response, dict):
             return response.get("cases", [])
         return response if isinstance(response, list) else []
-    except ClientError:
-        return []
+    except ClientError as e:
+        if e.status_code == 404:
+            return []
+        raise
 
 
 def main():

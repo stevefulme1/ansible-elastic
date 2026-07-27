@@ -12,33 +12,21 @@ DOCUMENTATION = r"""
 ---
 module: enrich_policy_info
 short_description: >-
-  Retrieve information about enrich policy resources
+  Retrieve information about Elasticsearch enrich policies
 version_added: "1.0.0"
 description:
   - >-
-    Retrieve a single enrich policy by its identifier,
-    or list all enrich policy resources.
+    Retrieve a single enrich policy by name,
+    or list all enrich policies.
   - This module always reports C(changed=False).
 author:
   - "Steve Fulmer (@stevefulme1)"
 options:
-  id:
+  name:
     description:
-      - The unique identifier of the enrich policy to retrieve.
-      - When omitted, all enrich policy resources are listed.
+      - The name of the enrich policy to retrieve.
+      - When omitted, all enrich policies are listed.
     type: str
-    required: false
-  page:
-    description:
-      - Page number for paginated results.
-      - Only applies when listing resources.
-    type: int
-    required: false
-  page_size:
-    description:
-      - Number of results per page.
-      - Only applies when listing resources.
-    type: int
     required: false
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
@@ -47,28 +35,20 @@ extends_documentation_fragment:
 EXAMPLES = r"""
 - name: Get a specific enrich policy
   stevefulme1.elastic.enrich_policy_info:
-    id: "example_id"
+    name: "my-enrich-policy"
   register: result
-- name: List all enrich policy resources
+
+- name: List all enrich policies
   stevefulme1.elastic.enrich_policy_info:
-  register: result
-- name: List enrich policy resources with pagination
-  stevefulme1.elastic.enrich_policy_info:
-    page: 1
-    page_size: 50
   register: result
 """
 
 RETURN = r"""
-enrich_policys:
+enrich_policies:
   description: List of enrich policy resources matching the query.
   returned: always
   type: list
   elements: dict
-  contains:
-    policies:
-      description: >-
-      type: list
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -82,55 +62,27 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 )
 
 
-def fetch_single(client, identifier):
-    """Retrieve a single enrich policy by identifier."""
-
-    # No single-resource GET endpoint; filter from list
-    items = client.get("/_enrich/policy")
-    if isinstance(items, dict):
-        items = items.get("results", items.get("data", items.get("items", [])))
-    for item in items:
-        if str(item.get("id")) == str(identifier):
-            return item
-    return None
+def fetch_single(client, name):
+    """Retrieve a single enrich policy by name."""
+    response = client.get("/_enrich/policy/{0}".format(name))
+    if isinstance(response, dict):
+        return response.get("policies", [])
+    return []
 
 
-def fetch_list(client, module):
-    """List enrich policy resources with optional filtering and pagination."""
-
-    params = {}
-
-    page = module.params.get("page")
-    page_size = module.params.get("page_size")
-
-    if page is not None or page_size is not None:
-        if page is not None:
-            params["page"] = page
-        if page_size is not None:
-            params["page_size"] = page_size
-        response = client.get("/_enrich/policy", params=params)
-        if isinstance(response, dict):
-            return response.get("results", response.get("data", response.get("items", [])))
-        return response if isinstance(response, list) else []
-    else:
-        return client.get_paginated("/_enrich/policy", params=params)
+def fetch_list(client):
+    """List all enrich policies."""
+    response = client.get("/_enrich/policy")
+    if isinstance(response, dict):
+        return response.get("policies", [])
+    return []
 
 
 def main():
     spec = auth_argument_spec()
     spec.update(
         dict(
-            id=dict(type="str", required=False),
-
-
-
-
-
-
-
-
-            page=dict(type="int", required=False),
-            page_size=dict(type="int", required=False),
+            name=dict(type="str", required=False),
         )
     )
 
@@ -144,18 +96,17 @@ def main():
 
     result = dict(
         changed=False,
-        enrich_policys=[],
+        enrich_policies=[],
     )
 
     try:
         client = Client(module)
-        identifier = module.params.get("id")
+        name = module.params.get("name")
 
-        if identifier is not None:
-            item = fetch_single(client, identifier)
-            result["enrich_policys"] = [item] if item else []
+        if name is not None:
+            result["enrich_policies"] = fetch_single(client, name)
         else:
-            result["enrich_policys"] = fetch_list(client, module)
+            result["enrich_policies"] = fetch_list(client)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

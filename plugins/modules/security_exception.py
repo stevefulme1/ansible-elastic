@@ -59,7 +59,6 @@ options:
       - A list of tags to categorize the exception list.
     type: list
     elements: str
-    default: []
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
@@ -130,8 +129,9 @@ def get_current_state(client, module):
             )
             if isinstance(response, dict) and response.get("id"):
                 return response
-        except ClientError:
-            pass
+        except ClientError as e:
+            if getattr(e, "status_code", None) != 404:
+                raise
 
     # Try by exception_id (internal UUID)
     if exception_id is not None:
@@ -142,21 +142,34 @@ def get_current_state(client, module):
             )
             if isinstance(response, dict) and response.get("id"):
                 return response
-        except ClientError:
-            pass
+        except ClientError as e:
+            if getattr(e, "status_code", None) != 404:
+                raise
 
     # Try to find by name in the list
     name = module.params.get("name")
     if name is not None:
         try:
-            response = client.get("/api/exception_lists/_find")
-            items = response.get("data", [])
-            for item in items:
-                if item.get("name") == name:
-                    return item
+            page = 1
+            per_page = 100
+            while True:
+                response = client.get(
+                    "/api/exception_lists/_find",
+                    params={"page": page, "per_page": per_page},
+                )
+                items = response.get("data", [])
+                for item in items:
+                    if item.get("name") == name:
+                        return item
+                total = response.get("total", 0)
+                if page * per_page >= total or not items:
+                    break
+                page += 1
             return None
-        except ClientError:
-            return None
+        except ClientError as e:
+            if getattr(e, "status_code", None) == 404:
+                return None
+            raise
 
     return None
 
@@ -235,7 +248,6 @@ def main():
             tags=dict(
                 type="list",
                 elements="str",
-                default=[],
             ),
         )
     )
@@ -245,6 +257,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ("name",)),
+        ],
         supports_check_mode=True,
     )
 
@@ -270,7 +285,7 @@ def main():
                         "/api/exception_lists",
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -287,7 +302,7 @@ def main():
                         "/api/exception_lists",
                         data=update_payload,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response
 
             else:
                 # Resource exists and is up-to-date

@@ -116,15 +116,19 @@ def get_current_state(client, module):
                 if item.get("title") == title:
                     return item
             return None
-        except ClientError:
-            return None
+        except ClientError as e:
+            if e.status_code == 404:
+                return None
+            raise
     try:
         response = client.get("/api/data_views/data_view/{0}".format(data_view_id))
         if isinstance(response, dict):
             return response.get("data_view", response)
         return response
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):

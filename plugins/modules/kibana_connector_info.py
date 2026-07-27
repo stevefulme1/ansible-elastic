@@ -63,8 +63,10 @@ def fetch_single(client, connector_id):
     """Retrieve a single Kibana connector by identifier."""
     try:
         return client.get("/api/actions/connector/{0}".format(connector_id))
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def fetch_list(client):
@@ -72,8 +74,10 @@ def fetch_list(client):
     try:
         items = client.get("/api/actions/connectors")
         return items if isinstance(items, list) else []
-    except ClientError:
-        return []
+    except ClientError as e:
+        if e.status_code == 404:
+            return []
+        raise
 
 
 def main():

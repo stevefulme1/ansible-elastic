@@ -12,56 +12,40 @@ DOCUMENTATION = r"""
 ---
 module: logstash_pipeline_info
 short_description: >-
-  Retrieve information about logstash pipeline resources
+  Retrieve information about Logstash pipelines via Elasticsearch
 version_added: "1.0.0"
 description:
   - >-
-    Retrieve a single logstash pipeline by its identifier,
-    or list all logstash pipeline resources.
+    Retrieve a single Logstash pipeline by its identifier,
+    or list all Logstash pipelines.
   - This module always reports C(changed=False).
 author:
   - "Steve Fulmer (@stevefulme1)"
 options:
   id:
     description:
-      - The unique identifier of the logstash pipeline to retrieve.
-      - When omitted, all logstash pipeline resources are listed.
+      - The identifier of the Logstash pipeline to retrieve.
+      - When omitted, all Logstash pipelines are listed.
     type: str
-    required: false
-  page:
-    description:
-      - Page number for paginated results.
-      - Only applies when listing resources.
-    type: int
-    required: false
-  page_size:
-    description:
-      - Number of results per page.
-      - Only applies when listing resources.
-    type: int
     required: false
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-- name: Get a specific logstash pipeline
+- name: Get a specific Logstash pipeline
   stevefulme1.elastic.logstash_pipeline_info:
-    id: "example_id"
+    id: "my-logstash-pipeline"
   register: result
-- name: List all logstash pipeline resources
+
+- name: List all Logstash pipelines
   stevefulme1.elastic.logstash_pipeline_info:
-  register: result
-- name: List logstash pipeline resources with pagination
-  stevefulme1.elastic.logstash_pipeline_info:
-    page: 1
-    page_size: 50
   register: result
 """
 
 RETURN = r"""
 logstash_pipelines:
-  description: List of logstash pipeline resources matching the query.
+  description: List of Logstash pipeline resources matching the query.
   returned: always
   type: list
   elements: dict
@@ -79,37 +63,28 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def fetch_single(client, identifier):
-    """Retrieve a single logstash pipeline by identifier."""
-
-    # No single-resource GET endpoint; filter from list
-    items = client.get("/_logstash/pipeline")
-    if isinstance(items, dict):
-        items = items.get("results", items.get("data", items.get("items", [])))
-    for item in items:
-        if str(item.get("id")) == str(identifier):
-            return item
-    return None
+    """Retrieve a single Logstash pipeline by identifier."""
+    response = client.get("/_logstash/pipeline/{0}".format(identifier))
+    # ES returns a dict keyed by pipeline ID
+    if isinstance(response, dict) and identifier in response:
+        pipeline = response[identifier]
+        pipeline["id"] = identifier
+        return [pipeline]
+    return []
 
 
-def fetch_list(client, module):
-    """List logstash pipeline resources with optional filtering and pagination."""
-
-    params = {}
-
-    page = module.params.get("page")
-    page_size = module.params.get("page_size")
-
-    if page is not None or page_size is not None:
-        if page is not None:
-            params["page"] = page
-        if page_size is not None:
-            params["page_size"] = page_size
-        response = client.get("/_logstash/pipeline", params=params)
-        if isinstance(response, dict):
-            return response.get("results", response.get("data", response.get("items", [])))
-        return response if isinstance(response, list) else []
-    else:
-        return client.get_paginated("/_logstash/pipeline", params=params)
+def fetch_list(client):
+    """List all Logstash pipelines."""
+    response = client.get("/_logstash/pipeline")
+    # ES returns a dict keyed by pipeline ID
+    if isinstance(response, dict):
+        pipelines = []
+        for pid, pdata in response.items():
+            if isinstance(pdata, dict):
+                pdata["id"] = pid
+                pipelines.append(pdata)
+        return pipelines
+    return []
 
 
 def main():
@@ -117,22 +92,6 @@ def main():
     spec.update(
         dict(
             id=dict(type="str", required=False),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            page=dict(type="int", required=False),
-            page_size=dict(type="int", required=False),
         )
     )
 
@@ -154,10 +113,9 @@ def main():
         identifier = module.params.get("id")
 
         if identifier is not None:
-            item = fetch_single(client, identifier)
-            result["logstash_pipelines"] = [item] if item else []
+            result["logstash_pipelines"] = fetch_single(client, identifier)
         else:
-            result["logstash_pipelines"] = fetch_list(client, module)
+            result["logstash_pipelines"] = fetch_list(client)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

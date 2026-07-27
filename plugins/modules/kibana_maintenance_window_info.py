@@ -93,12 +93,14 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 def fetch_single(client, identifier):
     """Retrieve a single maintenance window by identifier."""
     try:
-        response = client.get("/api/maintenance_window/{0}".format(identifier))
+        response = client.get("/internal/alerting/rules/maintenance_window/{0}".format(identifier))
         if isinstance(response, dict) and response.get("id"):
             return response
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def fetch_list(client, module):
@@ -111,15 +113,17 @@ def fetch_list(client, module):
     if page is not None:
         params["page"] = page
     if page_size is not None:
-        params["per_page"] = page_size
+        params["perPage"] = page_size
 
     try:
-        response = client.get("/api/maintenance_window/_find", params=params)
+        response = client.get("/internal/alerting/rules/maintenance_window/_find", params=params)
         if isinstance(response, dict):
             return response.get("data", [])
         return response if isinstance(response, list) else []
-    except ClientError:
-        return []
+    except ClientError as e:
+        if e.status_code == 404:
+            return []
+        raise
 
 
 def main():

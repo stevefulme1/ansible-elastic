@@ -64,8 +64,10 @@ def fetch_single(client, key_id):
     try:
         response = client.get("/api/fleet/enrollment_api_keys/{0}".format(key_id))
         return response.get("item", response) if isinstance(response, dict) else response
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def fetch_list(client):
@@ -75,8 +77,10 @@ def fetch_list(client):
         if isinstance(response, dict):
             return response.get("items", [])
         return response if isinstance(response, list) else []
-    except ClientError:
-        return []
+    except ClientError as e:
+        if e.status_code == 404:
+            return []
+        raise
 
 
 def main():

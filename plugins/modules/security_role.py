@@ -111,8 +111,10 @@ def get_current_state(client, module):
         if isinstance(response, dict) and name in response:
             return response[name]
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -199,7 +201,7 @@ def main():
                         data=desired,
                     )
                     result["role"] = desired
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -213,7 +215,7 @@ def main():
                         data=desired,
                     )
                     result["role"] = desired
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             else:
                 # Resource exists and is up-to-date

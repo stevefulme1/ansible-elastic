@@ -12,31 +12,31 @@ DOCUMENTATION = r"""
 ---
 module: synonym_info
 short_description: >-
-  Retrieve information about synonym resources
+  Retrieve information about Elasticsearch synonym sets
 version_added: "1.0.0"
 description:
   - >-
-    Retrieve a single synonym by its identifier,
-    or list all synonym resources.
+    Retrieve a single synonym set by its identifier,
+    or list all synonym set resources.
   - This module always reports C(changed=False).
 author:
   - "Steve Fulmer (@stevefulme1)"
 options:
   id:
     description:
-      - The unique identifier of the synonym to retrieve.
-      - When omitted, all synonym resources are listed.
+      - The unique identifier of the synonym set to retrieve.
+      - When omitted, all synonym set resources are listed.
     type: str
     required: false
-  page:
+  from:
     description:
-      - Page number for paginated results.
+      - Starting offset for paginated results.
       - Only applies when listing resources.
     type: int
     required: false
-  page_size:
+  size:
     description:
-      - Number of results per page.
+      - Number of results to return.
       - Only applies when listing resources.
     type: int
     required: false
@@ -45,34 +45,35 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
-- name: Get a specific synonym
+- name: Get a specific synonym set
   stevefulme1.elastic.synonym_info:
     id: "example_id"
   register: result
-- name: List all synonym resources
+- name: List all synonym set resources
   stevefulme1.elastic.synonym_info:
   register: result
-- name: List synonym resources with pagination
+- name: List synonym set resources with pagination
   stevefulme1.elastic.synonym_info:
-    page: 1
-    page_size: 50
+    from: 0
+    size: 50
   register: result
 """
 
 RETURN = r"""
 synonyms:
-  description: List of synonym resources matching the query.
+  description: List of synonym set resources matching the query.
   returned: always
   type: list
   elements: dict
   contains:
     synonyms_set:
       description: >-
+        The identifier of the synonym set.
       type: str
     count:
       description: >-
-        Number of synonym rules that the synonym set contains
-      type: float
+        Number of synonym rules that the synonym set contains.
+      type: int
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -87,37 +88,26 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 
 def fetch_single(client, identifier):
-    """Retrieve a single synonym by identifier."""
-
-    # No single-resource GET endpoint; filter from list
-    items = client.get("/_synonyms")
-    if isinstance(items, dict):
-        items = items.get("results", items.get("data", items.get("items", [])))
-    for item in items:
-        if str(item.get("id")) == str(identifier):
-            return item
-    return None
+    """Retrieve a single synonym set by identifier."""
+    return client.get("/_synonyms/{0}".format(identifier))
 
 
 def fetch_list(client, module):
-    """List synonym resources with optional filtering and pagination."""
-
+    """List synonym set resources with optional pagination."""
     params = {}
 
-    page = module.params.get("page")
-    page_size = module.params.get("page_size")
+    from_param = module.params.get("from")
+    size_param = module.params.get("size")
 
-    if page is not None or page_size is not None:
-        if page is not None:
-            params["page"] = page
-        if page_size is not None:
-            params["page_size"] = page_size
-        response = client.get("/_synonyms", params=params)
-        if isinstance(response, dict):
-            return response.get("results", response.get("data", response.get("items", [])))
-        return response if isinstance(response, list) else []
-    else:
-        return client.get_paginated("/_synonyms", params=params)
+    if from_param is not None:
+        params["from"] = from_param
+    if size_param is not None:
+        params["size"] = size_param
+
+    response = client.get("/_synonyms", params=params)
+    if isinstance(response, dict):
+        return response.get("results", [])
+    return response if isinstance(response, list) else []
 
 
 def main():
@@ -125,14 +115,8 @@ def main():
     spec.update(
         dict(
             id=dict(type="str", required=False),
-
-
-
-
-
-
-            page=dict(type="int", required=False),
-            page_size=dict(type="int", required=False),
+            **{"from": dict(type="int", required=False)},
+            size=dict(type="int", required=False),
         )
     )
 

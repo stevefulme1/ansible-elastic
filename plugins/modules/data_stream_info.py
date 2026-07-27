@@ -12,33 +12,21 @@ DOCUMENTATION = r"""
 ---
 module: data_stream_info
 short_description: >-
-  Retrieve information about data stream resources
+  Retrieve information about Elasticsearch data streams
 version_added: "1.0.0"
 description:
   - >-
-    Retrieve a single data stream by its identifier,
-    or list all data stream resources.
+    Retrieve a single data stream by name,
+    or list all data streams.
   - This module always reports C(changed=False).
 author:
   - "Steve Fulmer (@stevefulme1)"
 options:
-  id:
+  name:
     description:
-      - The unique identifier of the data stream to retrieve.
-      - When omitted, all data stream resources are listed.
+      - The name of the data stream to retrieve.
+      - When omitted, all data streams are listed.
     type: str
-    required: false
-  page:
-    description:
-      - Page number for paginated results.
-      - Only applies when listing resources.
-    type: int
-    required: false
-  page_size:
-    description:
-      - Number of results per page.
-      - Only applies when listing resources.
-    type: int
     required: false
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
@@ -47,15 +35,11 @@ extends_documentation_fragment:
 EXAMPLES = r"""
 - name: Get a specific data stream
   stevefulme1.elastic.data_stream_info:
-    id: "example_id"
+    name: "my-data-stream"
   register: result
-- name: List all data stream resources
+
+- name: List all data streams
   stevefulme1.elastic.data_stream_info:
-  register: result
-- name: List data stream resources with pagination
-  stevefulme1.elastic.data_stream_info:
-    page: 1
-    page_size: 50
   register: result
 """
 
@@ -65,10 +49,6 @@ data_streams:
   returned: always
   type: list
   elements: dict
-  contains:
-    data_streams:
-      description: >-
-      type: list
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -82,49 +62,27 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 )
 
 
-def fetch_single(client, identifier):
-    """Retrieve a single data stream by identifier."""
-
-    # No single-resource GET endpoint; filter from list
-    items = client.get("/_data_stream")
-    if isinstance(items, dict):
-        items = items.get("results", items.get("data", items.get("items", [])))
-    for item in items:
-        if str(item.get("id")) == str(identifier):
-            return item
-    return None
+def fetch_single(client, name):
+    """Retrieve a single data stream by name."""
+    response = client.get("/_data_stream/{0}".format(name))
+    if isinstance(response, dict):
+        return response.get("data_streams", [])
+    return []
 
 
-def fetch_list(client, module):
-    """List data stream resources with optional filtering and pagination."""
-
-    params = {}
-
-    page = module.params.get("page")
-    page_size = module.params.get("page_size")
-
-    if page is not None or page_size is not None:
-        if page is not None:
-            params["page"] = page
-        if page_size is not None:
-            params["page_size"] = page_size
-        response = client.get("/_data_stream", params=params)
-        if isinstance(response, dict):
-            return response.get("results", response.get("data", response.get("items", [])))
-        return response if isinstance(response, list) else []
-    else:
-        return client.get_paginated("/_data_stream", params=params)
+def fetch_list(client):
+    """List all data streams."""
+    response = client.get("/_data_stream")
+    if isinstance(response, dict):
+        return response.get("data_streams", [])
+    return []
 
 
 def main():
     spec = auth_argument_spec()
     spec.update(
         dict(
-            id=dict(type="str", required=False),
-
-
-            page=dict(type="int", required=False),
-            page_size=dict(type="int", required=False),
+            name=dict(type="str", required=False),
         )
     )
 
@@ -143,13 +101,12 @@ def main():
 
     try:
         client = Client(module)
-        identifier = module.params.get("id")
+        name = module.params.get("name")
 
-        if identifier is not None:
-            item = fetch_single(client, identifier)
-            result["data_streams"] = [item] if item else []
+        if name is not None:
+            result["data_streams"] = fetch_single(client, name)
         else:
-            result["data_streams"] = fetch_list(client, module)
+            result["data_streams"] = fetch_list(client)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

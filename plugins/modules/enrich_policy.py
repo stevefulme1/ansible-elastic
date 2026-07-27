@@ -11,57 +11,81 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: enrich_policy
-short_description: Manage enrich
+short_description: Manage Elasticsearch enrich policies
 version_added: "1.0.0"
 description:
-  - Create, update, and delete enrich policy resources.
+  - Create and delete Elasticsearch enrich policy resources.
+  - Enrich policies are immutable. Changes require delete and recreate.
   - Supports check mode and diff mode for safe operations.
 author:
   - "Steve Fulmer (@stevefulme1)"
 options:
+  name:
+    description:
+      - Name of the enrich policy.
+    type: str
   state:
     description:
       - Desired state of the enrich policy resource.
     type: str
     choices: ['present', 'absent']
     default: present
+  execute:
+    description:
+      - Whether to execute the enrich policy after creation.
+    type: bool
+    default: false
   geo_match:
     description:
-      - >-
+      - Geo-match enrich policy definition.
     type: dict
   match:
     description:
-      - >-
+      - Match enrich policy definition.
     type: dict
   range:
     description:
-      - >-
+      - Range enrich policy definition.
     type: dict
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-- name: Update a enrich policy
+- name: Create an enrich policy
   stevefulme1.elastic.enrich_policy:
-    id: "existing_id"
-    geo_match: "updated_geo_match"
-    match: "updated_match"
-    range: "updated_range"
+    name: "my-enrich-policy"
+    match:
+      indices: "my-index"
+      match_field: "email"
+      enrich_fields:
+        - "first_name"
+        - "last_name"
     state: present
-    # API:
-- name: Delete a enrich policy
+
+- name: Create and execute an enrich policy
   stevefulme1.elastic.enrich_policy:
-    id: "existing_id"
+    name: "my-enrich-policy"
+    match:
+      indices: "my-index"
+      match_field: "email"
+      enrich_fields:
+        - "first_name"
+        - "last_name"
+    execute: true
+    state: present
+
+- name: Delete an enrich policy
+  stevefulme1.elastic.enrich_policy:
+    name: "my-enrich-policy"
     state: absent
-    # API: DELETE /_enrich/policy/{name}
 """
 
 RETURN = r"""
-policies:
-  description: >-
+api_response:
+  description: Raw API response from Elasticsearch.
   returned: success
-  type: list
+  type: dict
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -77,37 +101,31 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 def get_current_state(client, module):
     """Retrieve the current state of the enrich policy via GET."""
-
-    # No single-resource GET endpoint; fall back to list + filter
-    identifier = module.params.get("id")
-
-    search_key = "id"
-    search_value = identifier
-
-    if search_value is None:
+    name = module.params.get("name")
+    if name is None:
         return None
     try:
-        items = client.get("/_enrich/policy")
-        if isinstance(items, dict):
-            items = items.get("results", items.get("data", items.get("items", [])))
-        for item in items:
-            if str(item.get(search_key)) == str(search_value):
-                return item
-            if str(item.get("id")) == str(search_value):
-                return item
+        response = client.get("/_enrich/policy/{0}".format(name))
+        if isinstance(response, dict):
+            policies = response.get("policies", [])
+            if policies:
+                return policies[0]
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
     """Compare current state against desired params and return True if an update is needed."""
     if current is None:
         return True
+    current_config = current.get("config", {})
     for key, value in desired.items():
         if value is None:
             continue
-        current_value = current.get(key)
+        current_value = current_config.get(key)
         if current_value != value:
             return True
     return False
@@ -133,54 +151,31 @@ def main():
     spec = auth_argument_spec()
     spec.update(
         dict(
+            name=dict(type="str"),
             state=dict(type="str", choices=["present", "absent"], default="present"),
-
-            geo_match=dict(
-                type="dict",
-
-
-
-
-
-
-
-            ),
-
-            match=dict(
-                type="dict",
-
-
-
-
-
-
-
-            ),
-
-            range=dict(
-                type="dict",
-
-
-
-
-
-
-
-            ),
-
+            execute=dict(type="bool", default=False),
+            geo_match=dict(type="dict"),
+            match=dict(type="dict"),
+            range=dict(type="dict"),
         )
     )
 
     module = AnsibleModule(
         argument_spec=spec,
-        mutually_exclusive=auth_mutually_exclusive(),
+        mutually_exclusive=auth_mutually_exclusive() + [
+            ("geo_match", "match", "range"),
+        ],
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ["state", "present", ["name"]],
+            ["state", "absent", ["name"]],
+        ],
         supports_check_mode=True,
-
     )
 
     state = module.params["state"]
+    name = module.params["name"]
     result = dict(changed=False, diff=dict(before={}, after={}))
 
     try:
@@ -191,39 +186,41 @@ def main():
             desired = build_payload(module)
 
             if current is None:
-                # Resource does not exist — create it
+                # Resource does not exist -- create it
                 result["changed"] = True
                 result["diff"]["before"] = {}
                 result["diff"]["after"] = desired
 
                 if not module.check_mode:
-
-                    pass
-
-            elif needs_update(current, desired):
-                # Resource exists but needs updating
-                result["changed"] = True
-                result["diff"]["before"] = current
-                result["diff"]["after"] = dict(current, **{k: v for k, v in desired.items() if v is not None})
-
-                if not module.check_mode:
-
-                    identifier = current.get("id")
-                    path = "".replace(
-                        "{id}", str(identifier)
-                    )
                     response = client.put(
-                        path,
+                        "/_enrich/policy/{0}".format(name),
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response
+
+                    if module.params.get("execute"):
+                        client.post("/_enrich/policy/{0}/_execute".format(name))
+
+            elif needs_update(current, desired):
+                # Enrich policies are immutable -- delete and recreate
+                result["changed"] = True
+                result["diff"]["before"] = current
+                result["diff"]["after"] = desired
+
+                if not module.check_mode:
+                    client.delete("/_enrich/policy/{0}".format(name))
+                    response = client.put(
+                        "/_enrich/policy/{0}".format(name),
+                        data=desired,
+                    )
+                    result["api_response"] = response
+
+                    if module.params.get("execute"):
+                        client.post("/_enrich/policy/{0}/_execute".format(name))
 
             else:
                 # Resource exists and is up-to-date
-
-                result["policies"] = current.get("policies")
-
-                pass
+                result["api_response"] = current
 
         elif state == "absent":
             if current is not None:
@@ -232,12 +229,7 @@ def main():
                 result["diff"]["after"] = {}
 
                 if not module.check_mode:
-
-                    identifier = current.get("id")
-                    path = "/_enrich/policy/{name}".replace(
-                        "{id}", str(identifier)
-                    )
-                    client.delete(path)
+                    client.delete("/_enrich/policy/{0}".format(name))
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

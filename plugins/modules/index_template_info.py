@@ -12,33 +12,22 @@ DOCUMENTATION = r"""
 ---
 module: index_template_info
 short_description: >-
-  Retrieve information about index template resources
+  Retrieve information about Elasticsearch index templates
 version_added: "1.0.0"
 description:
   - >-
-    Retrieve a single index template by its identifier,
+    Retrieve a single index template by its name,
     or list all index template resources.
   - This module always reports C(changed=False).
+  - The index template API does not support pagination.
 author:
   - "Steve Fulmer (@stevefulme1)"
 options:
-  id:
+  name:
     description:
-      - The unique identifier of the index template to retrieve.
+      - The name of the index template to retrieve.
       - When omitted, all index template resources are listed.
     type: str
-    required: false
-  page:
-    description:
-      - Page number for paginated results.
-      - Only applies when listing resources.
-    type: int
-    required: false
-  page_size:
-    description:
-      - Number of results per page.
-      - Only applies when listing resources.
-    type: int
     required: false
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
@@ -47,15 +36,10 @@ extends_documentation_fragment:
 EXAMPLES = r"""
 - name: Get a specific index template
   stevefulme1.elastic.index_template_info:
-    id: "example_id"
+    name: "my_template"
   register: result
 - name: List all index template resources
   stevefulme1.elastic.index_template_info:
-  register: result
-- name: List index template resources with pagination
-  stevefulme1.elastic.index_template_info:
-    page: 1
-    page_size: 50
   register: result
 """
 
@@ -65,10 +49,6 @@ index_templates:
   returned: always
   type: list
   elements: dict
-  contains:
-    index_templates:
-      description: >-
-      type: list
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -82,69 +62,27 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 )
 
 
-def fetch_single(client, identifier):
-    """Retrieve a single index template by identifier."""
-
-    # No single-resource GET endpoint; filter from list
-    items = client.get("/_index_template")
-    if isinstance(items, dict):
-        items = items.get("results", items.get("data", items.get("items", [])))
-    for item in items:
-        if str(item.get("id")) == str(identifier):
-            return item
-    return None
+def fetch_single(client, name):
+    """Retrieve a single index template by name."""
+    response = client.get("/_index_template/{0}".format(name))
+    if isinstance(response, dict):
+        return response.get("index_templates", [])
+    return []
 
 
-def fetch_list(client, module):
-    """List index template resources with optional filtering and pagination."""
-
-    params = {}
-
-    page = module.params.get("page")
-    page_size = module.params.get("page_size")
-
-    if page is not None or page_size is not None:
-        if page is not None:
-            params["page"] = page
-        if page_size is not None:
-            params["page_size"] = page_size
-        response = client.get("/_index_template", params=params)
-        if isinstance(response, dict):
-            return response.get("results", response.get("data", response.get("items", [])))
-        return response if isinstance(response, list) else []
-    else:
-        return client.get_paginated("/_index_template", params=params)
+def fetch_list(client):
+    """List all index template resources."""
+    response = client.get("/_index_template")
+    if isinstance(response, dict):
+        return response.get("index_templates", [])
+    return response if isinstance(response, list) else []
 
 
 def main():
     spec = auth_argument_spec()
     spec.update(
         dict(
-            id=dict(type="str", required=False),
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            page=dict(type="int", required=False),
-            page_size=dict(type="int", required=False),
+            name=dict(type="str", required=False),
         )
     )
 
@@ -163,13 +101,12 @@ def main():
 
     try:
         client = Client(module)
-        identifier = module.params.get("id")
+        name = module.params.get("name")
 
-        if identifier is not None:
-            item = fetch_single(client, identifier)
-            result["index_templates"] = [item] if item else []
+        if name is not None:
+            result["index_templates"] = fetch_single(client, name)
         else:
-            result["index_templates"] = fetch_list(client, module)
+            result["index_templates"] = fetch_list(client)
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

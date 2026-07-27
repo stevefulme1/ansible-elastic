@@ -11,7 +11,7 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: transform
-short_description: Manage transform
+short_description: Manage Elasticsearch transforms
 version_added: "1.0.0"
 description:
   - Create, update, and delete transform resources.
@@ -25,16 +25,20 @@ options:
     type: str
     choices: ['present', 'absent']
     default: present
+  id:
+    description:
+      - The unique identifier of the transform.
+    type: str
   dest:
     description:
       - >-
+        The destination for the transform.
     type: dict
-    required: true
   source:
     description:
       - >-
+        The source of the data for the transform.
     type: dict
-    required: true
   _meta:
     description:
       - >-
@@ -63,7 +67,7 @@ options:
   settings:
     description:
       - >-
-        The source of the data for the transform.
+        Defines optional transform settings.
     type: dict
   sync:
     description:
@@ -74,35 +78,43 @@ extends_documentation_fragment:
 """
 
 EXAMPLES = r"""
+- name: Create a transform
+  stevefulme1.elastic.transform:
+    id: "my_transform"
+    dest:
+      index: "dest_index"
+    source:
+      index:
+        - "source_index"
+    pivot:
+      group_by:
+        customer_id:
+          terms:
+            field: "customer_id"
+      aggregations:
+        max_price:
+          max:
+            field: "price"
+    state: present
+    # API: PUT /_transform/{id}
 - name: Update a transform
   stevefulme1.elastic.transform:
-    id: "existing_id"
-    _meta: "updated__meta"
+    id: "my_transform"
     description: "updated_description"
-    frequency: "updated_frequency"
-    latest: "updated_latest"
-    pivot: "updated_pivot"
-    retention_policy: "updated_retention_policy"
-    settings: "updated_settings"
-    sync: "updated_sync"
     state: present
-    # API:
+    # API: POST /_transform/{id}/_update
 - name: Delete a transform
   stevefulme1.elastic.transform:
-    id: "existing_id"
+    id: "my_transform"
     state: absent
-    # API: DELETE /_transform/{transform_id}
+    # API: DELETE /_transform/{id}
 """
 
 RETURN = r"""
-count:
-  description: >-
+api_response:
+  description: Raw API response from Elasticsearch.
   returned: success
-  type: float
-transforms:
-  description: >-
-  returned: success
-  type: list
+  type: dict
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -118,27 +130,20 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 def get_current_state(client, module):
     """Retrieve the current state of the transform via GET."""
-
-    # No single-resource GET endpoint; fall back to list + filter
     identifier = module.params.get("id")
-
-    search_key = "id"
-    search_value = identifier
-
-    if search_value is None:
+    if identifier is None:
         return None
     try:
-        items = client.get("/_transform")
-        if isinstance(items, dict):
-            items = items.get("results", items.get("data", items.get("items", [])))
-        for item in items:
-            if str(item.get(search_key)) == str(search_value):
-                return item
-            if str(item.get("id")) == str(search_value):
-                return item
-        return None
-    except ClientError:
-        return None
+        response = client.get("/_transform/{0}".format(identifier))
+        if isinstance(response, dict):
+            transforms = response.get("transforms", [])
+            if transforms:
+                return transforms[0]
+        return response
+    except ClientError as e:
+        if "404" in str(e) or "not_found" in str(e).lower():
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -197,120 +202,49 @@ def main():
         dict(
             state=dict(type="str", choices=["present", "absent"], default="present"),
 
+            id=dict(
+                type="str",
+            ),
+
             dest=dict(
                 type="dict",
-
-
-                required=True,
-
-
-
-
-
-
             ),
 
             source=dict(
                 type="dict",
-
-
-                required=True,
-
-
-
-
-
-
             ),
 
             _meta=dict(
                 type="dict",
-
-
-
-
-
-
-
             ),
 
             description=dict(
                 type="str",
-
-
-
-
-
-
-
             ),
 
             frequency=dict(
                 type="str",
-
-
-
-
-
-
-
             ),
 
             latest=dict(
                 type="dict",
-
-
-
-
-
-
-
             ),
 
             pivot=dict(
                 type="dict",
-
-
-
-
-
-
-
             ),
 
             retention_policy=dict(
                 type="dict",
-
-
-
-
-
-
-
             ),
 
             settings=dict(
                 type="dict",
-
-
-
-
-
-
-
             ),
 
             sync=dict(
                 type="dict",
-
-
-
-
-
-
-
             ),
-
         )
     )
 
@@ -320,7 +254,10 @@ def main():
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
         supports_check_mode=True,
-
+        required_if=[
+            ("state", "present", ("id",)),
+            ("state", "absent", ("id",)),
+        ],
     )
 
     state = module.params["state"]
@@ -329,6 +266,7 @@ def main():
     try:
         client = Client(module)
         current = get_current_state(client, module)
+        identifier = module.params["id"]
 
         if state == "present":
             desired = build_payload(module)
@@ -340,35 +278,28 @@ def main():
                 result["diff"]["after"] = desired
 
                 if not module.check_mode:
-
-                    pass
+                    response = client.put(
+                        "/_transform/{0}".format(identifier),
+                        data=desired,
+                    )
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             elif needs_update(current, desired):
-                # Resource exists but needs updating
+                # Resource exists but needs updating — use POST _update
                 result["changed"] = True
                 result["diff"]["before"] = current
                 result["diff"]["after"] = dict(current, **{k: v for k, v in desired.items() if v is not None})
 
                 if not module.check_mode:
-
-                    identifier = current.get("id")
-                    path = "".replace(
-                        "{id}", str(identifier)
-                    )
-                    response = client.put(
-                        path,
+                    response = client.post(
+                        "/_transform/{0}/_update".format(identifier),
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             else:
                 # Resource exists and is up-to-date
-
-                result["count"] = current.get("count")
-
-                result["transforms"] = current.get("transforms")
-
-                pass
+                result["api_response"] = current
 
         elif state == "absent":
             if current is not None:
@@ -377,12 +308,7 @@ def main():
                 result["diff"]["after"] = {}
 
                 if not module.check_mode:
-
-                    identifier = current.get("id")
-                    path = "/_transform/{transform_id}".replace(
-                        "{id}", str(identifier)
-                    )
-                    client.delete(path)
+                    client.delete("/_transform/{0}".format(identifier))
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

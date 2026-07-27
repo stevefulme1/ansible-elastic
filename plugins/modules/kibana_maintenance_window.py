@@ -34,18 +34,15 @@ options:
     description:
       - The title of the maintenance window.
     type: str
-    required: true
   duration:
     description:
       - The duration of the maintenance window in milliseconds.
     type: int
-    required: true
   r_rule:
     description:
       - The recurrence rule for the maintenance window.
       - Must include C(dtstart), C(tzid), and C(freq) keys.
     type: dict
-    required: true
   category_ids:
     description:
       - List of category identifiers for the maintenance window.
@@ -124,12 +121,14 @@ def get_current_state(client, module):
     if identifier is None:
         return None
     try:
-        response = client.get("/api/maintenance_window/{0}".format(identifier))
+        response = client.get("/internal/alerting/rules/maintenance_window/{0}".format(identifier))
         if isinstance(response, dict) and response.get("id"):
             return response
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -159,7 +158,7 @@ def build_payload(module):
         payload["rRule"] = module.params["r_rule"]
 
     if module.params.get("category_ids") is not None:
-        payload["category_ids"] = module.params["category_ids"]
+        payload["categoryIds"] = module.params["category_ids"]
 
     if module.params.get("enabled") is not None:
         payload["enabled"] = module.params["enabled"]
@@ -173,9 +172,9 @@ def main():
         dict(
             state=dict(type="str", choices=["present", "absent"], default="present"),
             window_id=dict(type="str"),
-            title=dict(type="str", required=True),
-            duration=dict(type="int", required=True),
-            r_rule=dict(type="dict", required=True),
+            title=dict(type="str"),
+            duration=dict(type="int"),
+            r_rule=dict(type="dict"),
             category_ids=dict(
                 type="list",
                 elements="str",
@@ -189,6 +188,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ["title", "duration", "r_rule"], True),
+        ],
         supports_check_mode=True,
     )
 
@@ -211,10 +213,10 @@ def main():
 
                 if not module.check_mode:
                     response = client.post(
-                        "/api/maintenance_window",
+                        "/internal/alerting/rules/maintenance_window",
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -225,10 +227,10 @@ def main():
                 if not module.check_mode:
                     identifier = current.get("id")
                     response = client.post(
-                        "/api/maintenance_window/{0}".format(identifier),
+                        "/internal/alerting/rules/maintenance_window/{0}".format(identifier),
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             else:
                 # Resource exists and is up-to-date
@@ -242,7 +244,7 @@ def main():
 
                 if not module.check_mode:
                     identifier = current.get("id")
-                    client.delete("/api/maintenance_window/{0}".format(identifier))
+                    client.delete("/internal/alerting/rules/maintenance_window/{0}".format(identifier))
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

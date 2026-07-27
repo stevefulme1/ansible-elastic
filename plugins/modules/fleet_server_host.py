@@ -33,9 +33,8 @@ options:
   name:
     description:
       - The display name for the Fleet server host.
-      - Required when creating a Fleet server host.
+      - Required when I(state=present).
     type: str
-    required: true
   host_urls:
     description:
       - List of Fleet server host URLs.
@@ -44,10 +43,6 @@ options:
   is_default:
     description:
       - Whether this Fleet server host is the default.
-    type: bool
-  is_preconfigured:
-    description:
-      - Whether this Fleet server host is preconfigured.
     type: bool
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
@@ -74,7 +69,6 @@ EXAMPLES = r"""
 - name: Delete a Fleet server host
   stevefulme1.elastic.fleet_server_host:
     host_id: "my-host-id"
-    name: "unused"
     state: absent
 """
 
@@ -103,8 +97,10 @@ def get_current_state(client, module):
         try:
             response = client.get("/api/fleet/fleet_server_hosts/{0}".format(host_id))
             return response.get("item", response)
-        except ClientError:
-            return None
+        except ClientError as e:
+            if e.status_code == 404:
+                return None
+            raise
     # Try to find by name in the list
     name = module.params.get("name")
     if name is None:
@@ -116,8 +112,10 @@ def get_current_state(client, module):
             if item.get("name") == name:
                 return item
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -146,9 +144,6 @@ def build_payload(module):
     if module.params.get("is_default") is not None:
         payload["is_default"] = module.params["is_default"]
 
-    if module.params.get("is_preconfigured") is not None:
-        payload["is_preconfigured"] = module.params["is_preconfigured"]
-
     return payload
 
 
@@ -158,10 +153,9 @@ def main():
         dict(
             state=dict(type="str", choices=["present", "absent"], default="present"),
             host_id=dict(type="str"),
-            name=dict(type="str", required=True),
+            name=dict(type="str"),
             host_urls=dict(type="list", elements="str"),
             is_default=dict(type="bool"),
-            is_preconfigured=dict(type="bool"),
         )
     )
 
@@ -170,6 +164,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ("name",)),
+        ],
         supports_check_mode=True,
     )
 

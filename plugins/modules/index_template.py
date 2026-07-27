@@ -11,7 +11,7 @@ __metaclass__ = type
 DOCUMENTATION = r"""
 ---
 module: index_template
-short_description: Manage indices
+short_description: Manage Elasticsearch index templates
 version_added: "1.0.0"
 description:
   - Create, update, and delete index template resources.
@@ -25,6 +25,10 @@ options:
     type: str
     choices: ['present', 'absent']
     default: present
+  name:
+    description:
+      - Name of the index template.
+    type: str
   _meta:
     description:
       - >-
@@ -39,7 +43,7 @@ options:
       - >-
         An ordered list of component template names. Component templates are merged in the order...
     type: list
-    elements: dict
+    elements: str
   data_stream:
     description:
       - >-
@@ -54,16 +58,17 @@ options:
       - >-
         The configuration option ignore_missing_component_templates can be used when an index template...
     type: list
-    elements: dict
+    elements: str
   index_patterns:
     description:
       - >-
-    type: str
+    type: list
+    elements: str
   priority:
     description:
       - >-
         Priority to determine index template precedence when a new data stream or index is created. The...
-    type: float
+    type: int
   template:
     description:
       - >-
@@ -71,43 +76,41 @@ options:
   version:
     description:
       - >-
-    type: float
+    type: int
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
 
 EXAMPLES = r"""
-- name: Create a index template
+- name: Create an index template
   stevefulme1.elastic.index_template:
+    name: "my_template"
+    index_patterns:
+      - "logs-*"
     state: present
-    # API: POST /_index_template/{name}
-- name: Update a index template
+    # API: PUT /_index_template/{name}
+- name: Update an index template
   stevefulme1.elastic.index_template:
-    id: "existing_id"
-    _meta: "updated__meta"
-    allow_auto_create: "updated_allow_auto_create"
-    composed_of: "updated_composed_of"
-    data_stream: "updated_data_stream"
-    deprecated: "updated_deprecated"
-    ignore_missing_component_templates: "updated_ignore_missing_component_templates"
-    index_patterns: "updated_index_patterns"
-    priority: "updated_priority"
-    template: "updated_template"
-    version: "updated_version"
+    name: "my_template"
+    index_patterns:
+      - "logs-*"
+    priority: 100
+    composed_of:
+      - "component1"
     state: present
-    # API:
-- name: Delete a index template
+    # API: PUT /_index_template/{name}
+- name: Delete an index template
   stevefulme1.elastic.index_template:
-    id: "existing_id"
+    name: "my_template"
     state: absent
     # API: DELETE /_index_template/{name}
 """
 
 RETURN = r"""
-index_templates:
-  description: >-
+api_response:
+  description: Raw API response from Elasticsearch.
   returned: success
-  type: list
+  type: dict
 """
 
 from ansible.module_utils.basic import AnsibleModule
@@ -123,27 +126,20 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 
 def get_current_state(client, module):
     """Retrieve the current state of the index template via GET."""
-
-    # No single-resource GET endpoint; fall back to list + filter
-    identifier = module.params.get("id")
-
-    search_key = "id"
-    search_value = identifier
-
-    if search_value is None:
+    name = module.params.get("name")
+    if name is None:
         return None
     try:
-        items = client.get("/_index_template")
-        if isinstance(items, dict):
-            items = items.get("results", items.get("data", items.get("items", [])))
-        for item in items:
-            if str(item.get(search_key)) == str(search_value):
-                return item
-            if str(item.get("id")) == str(search_value):
-                return item
-        return None
-    except ClientError:
-        return None
+        response = client.get("/_index_template/{0}".format(name))
+        if isinstance(response, dict):
+            templates = response.get("index_templates", [])
+            if templates:
+                return templates[0]
+        return response
+    except ClientError as e:
+        if "404" in str(e) or "not_found" in str(e).lower():
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -202,120 +198,52 @@ def main():
         dict(
             state=dict(type="str", choices=["present", "absent"], default="present"),
 
+            name=dict(
+                type="str",
+            ),
+
             _meta=dict(
                 type="dict",
-
-
-
-
-
-
-
             ),
 
             allow_auto_create=dict(
                 type="bool",
-
-
-
-
-
-
-
             ),
 
             composed_of=dict(
                 type="list",
-
-                elements="dict",
-
-
-
-
-
-
-
+                elements="str",
             ),
 
             data_stream=dict(
                 type="dict",
-
-
-
-
-
-
-
             ),
 
             deprecated=dict(
                 type="bool",
-
-
-
-
-
-
-
             ),
 
             ignore_missing_component_templates=dict(
                 type="list",
-
-                elements="dict",
-
-
-
-
-
-
-
+                elements="str",
             ),
 
             index_patterns=dict(
-                type="str",
-
-
-
-
-
-
-
+                type="list",
+                elements="str",
             ),
 
             priority=dict(
-                type="float",
-
-
-
-
-
-
-
+                type="int",
             ),
 
             template=dict(
                 type="dict",
-
-
-
-
-
-
-
             ),
 
             version=dict(
-                type="float",
-
-
-
-
-
-
-
+                type="int",
             ),
-
         )
     )
 
@@ -325,7 +253,10 @@ def main():
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
         supports_check_mode=True,
-
+        required_if=[
+            ("state", "present", ("name",)),
+            ("state", "absent", ("name",)),
+        ],
     )
 
     state = module.params["state"]
@@ -334,6 +265,7 @@ def main():
     try:
         client = Client(module)
         current = get_current_state(client, module)
+        name = module.params["name"]
 
         if state == "present":
             desired = build_payload(module)
@@ -345,12 +277,11 @@ def main():
                 result["diff"]["after"] = desired
 
                 if not module.check_mode:
-
-                    response = client.POST(
-                        "/_index_template/{name}",
+                    response = client.put(
+                        "/_index_template/{0}".format(name),
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -359,23 +290,15 @@ def main():
                 result["diff"]["after"] = dict(current, **{k: v for k, v in desired.items() if v is not None})
 
                 if not module.check_mode:
-
-                    identifier = current.get("id")
-                    path = "".replace(
-                        "{id}", str(identifier)
-                    )
                     response = client.put(
-                        path,
+                        "/_index_template/{0}".format(name),
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             else:
                 # Resource exists and is up-to-date
-
-                result["index_templates"] = current.get("index_templates")
-
-                pass
+                result["api_response"] = current
 
         elif state == "absent":
             if current is not None:
@@ -384,12 +307,7 @@ def main():
                 result["diff"]["after"] = {}
 
                 if not module.check_mode:
-
-                    identifier = current.get("id")
-                    path = "/_index_template/{name}".replace(
-                        "{id}", str(identifier)
-                    )
-                    client.delete(path)
+                    client.delete("/_index_template/{0}".format(name))
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

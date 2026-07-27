@@ -52,13 +52,11 @@ options:
       - A list of column configurations for the timeline display.
     type: list
     elements: dict
-    default: []
   data_providers:
     description:
       - A list of data provider configurations that supply data to the timeline.
     type: list
     elements: dict
-    default: []
   kql_mode:
     description:
       - The KQL mode for the timeline query bar.
@@ -129,7 +127,7 @@ def get_current_state(client, module):
     if timeline_id is not None:
         try:
             response = client.get(
-                "/api/timelines",
+                "/api/timeline",
                 params={"id": timeline_id},
             )
             # Single GET returns the timeline object directly or nested
@@ -144,8 +142,10 @@ def get_current_state(client, module):
                 elif timeline.get("savedObjectId"):
                     return timeline
             return None
-        except ClientError:
-            return None
+        except ClientError as e:
+            if e.status_code == 404:
+                return None
+            raise
 
     # Try to find by title in the list
     title = module.params.get("title")
@@ -158,8 +158,10 @@ def get_current_state(client, module):
             if item.get("title") == title:
                 return item
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -230,13 +232,13 @@ def main():
             columns=dict(
                 type="list",
                 elements="dict",
-                default=[],
+                default=None,
             ),
 
             data_providers=dict(
                 type="list",
                 elements="dict",
-                default=[],
+                default=None,
             ),
 
             kql_mode=dict(
@@ -291,7 +293,7 @@ def main():
                             result["timeline_id"] = timeline_data.get("savedObjectId")
                             result["title"] = timeline_data.get("title")
                             result["version"] = timeline_data.get("version")
-                        result.update({k: v for k, v in response.items() if k not in result})
+                        result["api_response"] = response
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -306,9 +308,9 @@ def main():
                         "timelineId": current.get("savedObjectId"),
                         "version": current.get("version"),
                     }
-                    # Update uses PATCH /api/timeline
+                    # Update uses PATCH /api/timelines (plural)
                     response = client.patch(
-                        "/api/timeline",
+                        "/api/timelines",
                         data=update_payload,
                     )
                     if isinstance(response, dict):
@@ -317,7 +319,7 @@ def main():
                             result["timeline_id"] = timeline_data.get("savedObjectId")
                             result["title"] = timeline_data.get("title")
                             result["version"] = timeline_data.get("version")
-                        result.update({k: v for k, v in response.items() if k not in result})
+                        result["api_response"] = response
 
             else:
                 # Resource exists and is up-to-date
@@ -334,8 +336,7 @@ def main():
                 if not module.check_mode:
                     saved_object_id = module.params.get("timeline_id") or current.get("savedObjectId")
                     # DELETE /api/timelines uses request body with savedObjectIds
-                    client._request(
-                        "DELETE",
+                    client.delete(
                         "/api/timelines",
                         data={"savedObjectIds": [saved_object_id]},
                     )

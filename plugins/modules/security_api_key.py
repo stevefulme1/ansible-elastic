@@ -17,6 +17,10 @@ description:
   - Create and delete Elasticsearch API keys.
   - API keys cannot be updated. Use C(state=present) to create a key if it does
     not already exist, and C(state=absent) to delete an existing key.
+  - >-
+    Idempotency note: API keys are create-only resources. Existing keys cannot
+    be modified in place. To change an API key's configuration, delete the old
+    key and create a new one.
   - Supports check mode and diff mode for safe operations.
 author:
   - "Steve Fulmer (@stevefulme1)"
@@ -78,9 +82,12 @@ id:
   returned: on create
   type: str
 api_key:
-  description: The generated API key value. Only returned on creation.
+  description: >-
+    The generated API key value. Only returned on creation.
+    This value is sensitive and should be treated as a secret.
   returned: on create
   type: str
+  no_log: true
 name:
   description: The name of the API key.
   returned: on create
@@ -118,8 +125,10 @@ def get_current_state(client, module):
         if active_keys:
             return active_keys[0]
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def build_payload(module):
@@ -198,8 +207,7 @@ def main():
                 if not module.check_mode:
                     key_id = current.get("id")
                     # DELETE /_security/api_key requires a request body
-                    client._request(
-                        "DELETE",
+                    client.delete(
                         "/_security/api_key",
                         data={"ids": [key_id]},
                     )

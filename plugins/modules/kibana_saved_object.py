@@ -47,7 +47,7 @@ options:
       - A list of references to other saved objects.
     type: list
     elements: dict
-    default: []
+
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """
@@ -122,8 +122,10 @@ def get_current_state(client, module):
         if isinstance(response, dict) and response.get("id"):
             return response
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -175,7 +177,6 @@ def main():
             references=dict(
                 type="list",
                 elements="dict",
-                default=[],
             ),
         )
     )
@@ -185,6 +186,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ["attributes"], True),
+        ],
         supports_check_mode=True,
     )
 
@@ -213,7 +217,7 @@ def main():
                         path,
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             elif needs_update(current, desired):
                 # Resource exists but needs updating
@@ -229,7 +233,7 @@ def main():
                         path,
                         data=desired,
                     )
-                    result.update(response if isinstance(response, dict) else {})
+                    result["api_response"] = response if isinstance(response, dict) else {}
 
             else:
                 # Resource exists and is up-to-date

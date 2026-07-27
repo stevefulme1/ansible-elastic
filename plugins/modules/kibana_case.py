@@ -294,7 +294,7 @@ def main():
                     identifier = current.get("id")
                     client.delete(
                         "/api/cases",
-                        params={"ids": json.dumps([identifier])},
+                        params={"ids": [identifier]},
                     )
 
     except ClientError as e:

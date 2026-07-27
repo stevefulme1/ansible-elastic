@@ -17,8 +17,8 @@ def _build_resource(**overrides):
         "rule_id": "res-123",
         "name": "test-name",
         "description": "test-description",
-        "risk_score": "test-risk_score",
-        "severity": "test-severity"
+        "risk_score": 50,
+        "severity": "high"
     }
     base.update(overrides)
     return base

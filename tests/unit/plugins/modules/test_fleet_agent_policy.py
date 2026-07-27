@@ -230,6 +230,7 @@ class TestDelete:
         mock_module.exit_json.assert_called_once()
         assert mock_module.exit_json.call_args[1]["changed"] is True
         mock_client.delete.assert_not_called()
+        mock_client.post.assert_not_called()
 
 
 class TestUpdate:

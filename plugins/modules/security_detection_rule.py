@@ -64,8 +64,8 @@ options:
   interval:
     description:
       - How often the rule runs, specified as a time value string.
+      - When omitted on update, the existing value is preserved.
     type: str
-    default: "5m"
   from_time:
     description:
       - The relative start time for the rule look-back window.
@@ -329,7 +329,6 @@ def main():
 
             interval=dict(
                 type="str",
-                default="5m",
             ),
 
             from_time=dict(

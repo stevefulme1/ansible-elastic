@@ -326,15 +326,16 @@ def main():
 
             # Handle active/inactive state via dedicated endpoints
             active_param = module.params.get("active")
-            if active_param is not None and not module.check_mode:
+            if active_param is not None:
                 watch_id = module.params["watch_id"]
                 current_active = current.get("status", {}).get("state", {}).get("active") if current else None
                 if current_active is None or current_active != active_param:
-                    if active_param:
-                        client.put("/_watcher/watch/{0}/_activate".format(watch_id))
-                    else:
-                        client.put("/_watcher/watch/{0}/_deactivate".format(watch_id))
                     result["changed"] = True
+                    if not module.check_mode:
+                        if active_param:
+                            client.put("/_watcher/watch/{0}/_activate".format(watch_id))
+                        else:
+                            client.put("/_watcher/watch/{0}/_deactivate".format(watch_id))
 
         elif state == "absent":
             if current is not None:

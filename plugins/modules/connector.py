@@ -45,6 +45,7 @@ options:
   language:
     description:
       - The language the connector uses, such as C(en) or C(fr).
+      - Can only be set at creation time; updates to this field are ignored.
     type: str
   name:
     description:
@@ -272,11 +273,6 @@ def main():
                         response = client.put(
                             "/_connector/{0}/_native".format(identifier),
                             data={"is_native": desired["is_native"]},
-                        )
-                    if "language" in desired:
-                        response = client.put(
-                            "/_connector/{0}/_configuration".format(identifier),
-                            data={"language": desired["language"]},
                         )
                     result["api_response"] = response if isinstance(response, dict) else {}
 

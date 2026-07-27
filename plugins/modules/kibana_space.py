@@ -172,6 +172,9 @@ def main():
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
         required_one_of=auth_required_one_of(),
+        required_if=[
+            ("state", "present", ("name",)),
+        ],
         supports_check_mode=True,
     )
 

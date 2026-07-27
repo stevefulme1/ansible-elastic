@@ -10,6 +10,28 @@ env:
   NAMESPACE: stevefulme1
   COLLECTION: elastic
 jobs:
+  build:
+    name: Build collection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ansible-core
+        run: pip install ansible-core
+      - name: Build collection tarball
+        working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
+        run: ansible-galaxy collection build --force
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: collection-tarball
+          path: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}/*.tar.gz
   lint:
     name: Lint
     runs-on: ubuntu-latest
@@ -29,7 +51,7 @@ jobs:
         run: yamllint -c .yamllint plugins/ meta/ changelogs/ galaxy.yml
       - name: Run flake8
         working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
-        run: flake8 plugins/ --max-line-length=120 --ignore=E402,W503,W291,W293,E303
+        run: flake8 plugins/ --max-line-length=120 --ignore=E402,W503
       - name: Run ansible-lint
         working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
         run: ansible-lint
@@ -44,15 +66,12 @@ jobs:
           - stable-2.16
           - stable-2.17
           - stable-2.18
-          - stable-2.20
         python:
           - "3.12"
           - "3.13"
         exclude:
-          # ansible-core 2.16 does not support Python 3.13
           - ansible: stable-2.16
             python: "3.13"
-          # ansible-core stable-2.17 does not support Python 3.13
           - ansible: stable-2.17
             python: "3.13"
     steps:
@@ -85,7 +104,7 @@ jobs:
       - name: Install ansible-core
         run: pip install ansible-core
       - name: Install test dependencies
-        run: pip install pytest pytest-mock pytest-xdist
+        run: pip install pytest pytest-mock pytest-xdist pytest-asyncio aiohttp
         working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
       - name: Install collection test requirements
         run: |
@@ -95,13 +114,12 @@ jobs:
         working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
       - name: Run unit tests
         working-directory: ansible_collections/${{ env.NAMESPACE }}/${{ env.COLLECTION }}
-        run: python -m pytest tests/unit/ -v --tb=short || true
+        run: python -m pytest tests/unit/ -v --tb=short
   integration:
     name: Integration tests
     runs-on: ubuntu-latest
     needs: [sanity, unit]
-    # Integration tests need a live API — allow failures
-    continue-on-error: true
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

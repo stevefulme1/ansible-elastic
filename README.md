@@ -2,6 +2,12 @@
 
 Ansible collection for managing the Elastic Stack -- Elasticsearch, Kibana, Fleet, Security SIEM, and Event-Driven Ansible integration.
 
+## Supported Versions
+
+- Elasticsearch / Kibana 7.17.x (last supported 7.x)
+- Elasticsearch / Kibana 8.x
+- Elastic Cloud (all supported versions)
+
 ## Modules
 
 ### Elasticsearch Core
@@ -85,6 +91,7 @@ Ansible collection for managing the Elastic Stack -- Elasticsearch, Kibana, Flee
 | `elastic_alert` | Event source for Kibana alerting rule triggers |
 | `elastic_siem` | Event source for Security detection signals |
 | `elastic_watcher` | Event source for Watcher execution history |
+| `elastic_webhook` | Webhook receiver for Elastic alerting actions |
 
 ## Installation
 
@@ -94,7 +101,53 @@ ansible-galaxy collection install stevefulme1.elastic
 
 ## Authentication
 
-All modules require `api_url` and `api_token` parameters, or the equivalent environment variables.
+All modules require `api_url` and one of the following authentication methods:
+
+### API Key Authentication
+
+```yaml
+- name: Example with API key
+  stevefulme1.elastic.ilm_policy:
+    api_url: "https://elasticsearch.example.com:9200"
+    api_key: "base64-encoded-id:key"
+    name: my-policy
+    state: present
+    policy:
+      phases:
+        hot:
+          actions:
+            rollover:
+              max_size: 50gb
+```
+
+### Basic Authentication
+
+```yaml
+- name: Example with basic auth
+  stevefulme1.elastic.ilm_policy:
+    api_url: "https://elasticsearch.example.com:9200"
+    api_username: "elastic"
+    api_password: "changeme"
+    name: my-policy
+    state: present
+    policy:
+      phases:
+        hot:
+          actions:
+            rollover:
+              max_size: 50gb
+```
+
+### Environment Variables
+
+You can also set authentication via environment variables or `module_defaults`:
+
+```yaml
+module_defaults:
+  group/stevefulme1.elastic.elastic:
+    api_url: "{{ lookup('env', 'ELASTIC_URL') }}"
+    api_key: "{{ lookup('env', 'ELASTIC_API_KEY') }}"
+```
 
 ## License
 

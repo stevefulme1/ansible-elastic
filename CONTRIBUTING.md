@@ -1,27 +1,53 @@
-# WELCOME TO ANSIBLE GITHUB
+# Contributing to stevefulme1.elastic
 
-Hi! Nice to see you here!
+Thank you for your interest in contributing to this Ansible collection for the Elastic Stack!
 
-## QUESTIONS ?
+## Getting Started
 
-Please see the [Community Guide](https://docs.ansible.com/ansible/latest/community/index.html) for information on how to ask questions on the [mailing lists](https://docs.ansible.com/ansible/latest/community/communication.html#mailing-list-information) and IRC.
+1. Fork the repository on [GitHub](https://github.com/stevefulme1/ansible-elastic).
+2. Clone your fork and create a feature branch.
+3. Make your changes and add tests.
+4. Submit a pull request.
 
-The GitHub issue tracker is not the best place for questions for various reasons, but both IRC and the mailing list are very helpful places for those things, as the community page explains best.
+## Development Setup
 
-## CONTRIBUTING ?
+```bash
+# Clone into the Ansible collection path
+mkdir -p ansible_collections/stevefulme1
+cd ansible_collections/stevefulme1
+git clone https://github.com/stevefulme1/ansible-elastic.git elastic
+cd elastic
 
-By contributing to this project you agree to the Developer Certificate of Origin (DCO). This document was created by the Linux Kernel community and is a simple statement that you, as a contributor, have the legal right to make the contribution.
+# Install dependencies
+pip install ansible-core pytest pytest-mock pytest-asyncio aiohttp
 
-You can read more about the [DCO and Contributor License Agreements](https://docs.ansible.com/ansible/latest/community/collection_contributors/collection_requirements.html#contributor-license-agreements) on the Ansible docsite.
+# Run unit tests
+python -m pytest tests/unit/ -v
 
-Please review the [Community Guide](https://docs.ansible.com/ansible/latest/community/index.html) for more information on contributing to Ansible.
+# Run sanity tests
+ansible-test sanity --docker
 
-## BUG TO REPORT ?
+# Build the collection
+ansible-galaxy collection build
+```
 
-First and foremost, also check the [Community Guide](https://docs.ansible.com/ansible/latest/community/index.html).
+## Reporting Bugs
 
-You can report bugs or make enhancement requests at the [Ansible GitHub issue page](http://github.com/ansible/ansible/issues/new/choose) by filling out the issue template that will be presented.
+Please report bugs via [GitHub Issues](https://github.com/stevefulme1/ansible-elastic/issues/new).
 
-Also please make sure you are testing on the latest released version of Ansible or the development branch; see the [Installation Guide](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) for details.
+Include:
+- Ansible version (`ansible --version`)
+- Collection version
+- Elasticsearch/Kibana version
+- Steps to reproduce
+- Expected vs actual behavior
 
-Thanks!
+## Code Standards
+
+- All modules must include GPL-3.0 header, DOCUMENTATION, EXAMPLES, and RETURN blocks.
+- Run `ansible-test sanity` and `flake8` before submitting.
+- Add unit tests for new modules.
+
+## Developer Certificate of Origin
+
+By contributing to this project you agree to the Developer Certificate of Origin (DCO).

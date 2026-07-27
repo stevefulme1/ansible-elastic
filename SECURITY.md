@@ -2,14 +2,21 @@
 
 ## Supported Versions
 
-Ansible applies security fixes according to the 3-versions-back support
-policy. Please find more information in [our docs](
-https://docs.ansible.com/ansible/devel/reference_appendices/release_and_maintenance.html#release-status
-).
+| Version | Supported |
+|---------|-----------|
+| 0.2.x   | Yes       |
+| < 0.2   | No        |
 
 ## Reporting a Vulnerability
 
-We encourage responsible disclosure practices for security
-vulnerabilities. Please read our [policies for reporting bugs](
-https://docs.ansible.com/ansible/devel/community/reporting_bugs_and_features.html#reporting-a-bug
-) if you want to report a security issue that might affect Ansible.
+If you discover a security vulnerability in this collection, please report it
+responsibly by opening a [GitHub Issue](https://github.com/stevefulme1/ansible-elastic/issues/new)
+with the label `security`, or contact the maintainer directly.
+
+Please do **not** disclose security issues publicly until a fix is available.
+
+## Scope
+
+This policy covers the `stevefulme1.elastic` Ansible collection code only.
+For vulnerabilities in Elasticsearch, Kibana, or Ansible itself, please report
+to their respective security teams.

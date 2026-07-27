@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 
 # Copyright: (c) 2024, Steve Fulmer (@stevefulme1)
@@ -8,6 +7,7 @@ from __future__ import absolute_import, division, print_function
 
 __metaclass__ = type
 
+import base64
 import json
 import time
 
@@ -28,24 +28,45 @@ class ClientError(Exception):
 def argument_spec():
     """Return the shared authentication argument spec for all modules."""
     return dict(
-
-        api_key=dict(type="str", required=True, no_log=True),
-
         api_url=dict(
             type="str",
-            required=False,
-            default="",
+            required=True,
         ),
+        api_key=dict(type="str", no_log=True),
+        api_username=dict(type="str"),
+        api_password=dict(type="str", no_log=True),
         validate_certs=dict(type="bool", default=True),
         request_timeout=dict(type="int", default=30),
     )
 
 
+def auth_mutually_exclusive():
+    """Return mutually exclusive auth parameter groups."""
+    return [
+        ("api_key", "api_username"),
+        ("api_key", "api_password"),
+    ]
+
+
+def auth_required_together():
+    """Return auth parameters that must be specified together."""
+    return [
+        ("api_username", "api_password"),
+    ]
+
+
+def auth_required_one_of():
+    """Return auth parameter groups where at least one is required."""
+    return [
+        ("api_key", "api_username"),
+    ]
+
+
 class Client:
-    """HTTP client for the elastic API with auth, retry, and pagination."""
+    """HTTP client for the Elastic Stack API with auth, retry, and Kibana support."""
 
     MAX_RETRIES = 3
-    RETRY_BACKOFF_BASE = 2  # seconds
+    RETRY_BACKOFF_BASE = 2
     RETRY_STATUS_CODES = (429, 500, 502, 503, 504)
 
     def __init__(self, module):
@@ -56,13 +77,23 @@ class Client:
         self.headers = self._build_auth_headers()
 
     def _build_auth_headers(self):
-        """Construct authentication headers based on the configured auth type."""
+        """Construct authentication headers for Elasticsearch or Kibana."""
         headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
         }
 
-        headers["X-API-Key"] = self.module.params["api_key"]
+        api_key = self.module.params.get("api_key")
+        api_username = self.module.params.get("api_username")
+
+        if api_key:
+            headers["Authorization"] = "ApiKey {0}".format(api_key)
+        elif api_username:
+            api_password = self.module.params.get("api_password") or ""
+            credentials = base64.b64encode(
+                "{0}:{1}".format(api_username, api_password).encode("utf-8")
+            ).decode("utf-8")
+            headers["Authorization"] = "Basic {0}".format(credentials)
 
         return headers
 
@@ -74,10 +105,14 @@ class Client:
             url = "{0}?{1}".format(url, urlencode(params, doseq=True))
         return url
 
-    def _request(self, method, path, data=None, params=None):
+    def _request(self, method, path, data=None, params=None, extra_headers=None):
         """Execute an HTTP request with retry and backoff on rate limits."""
         url = self._build_url(path, params)
         body = json.dumps(data).encode("utf-8") if data is not None else None
+
+        request_headers = dict(self.headers)
+        if extra_headers:
+            request_headers.update(extra_headers)
 
         last_error = None
         for attempt in range(self.MAX_RETRIES + 1):
@@ -85,7 +120,7 @@ class Client:
                 response = open_url(
                     url,
                     method=method,
-                    headers=self.headers,
+                    headers=request_headers,
                     data=body,
                     validate_certs=self.validate_certs,
                     timeout=self.timeout,
@@ -104,7 +139,6 @@ class Client:
                     pass
 
                 if status in self.RETRY_STATUS_CODES and attempt < self.MAX_RETRIES:
-                    # Retry with exponential backoff
                     retry_after = None
                     if status == 429:
                         retry_after_header = e.headers.get("Retry-After")
@@ -152,9 +186,9 @@ class Client:
         """Perform a GET request."""
         return self._request("GET", path, params=params)
 
-    def post(self, path, data=None, params=None):
+    def post(self, path, data=None, params=None, extra_headers=None):
         """Perform a POST request."""
-        return self._request("POST", path, data=data, params=params)
+        return self._request("POST", path, data=data, params=params, extra_headers=extra_headers)
 
     def put(self, path, data=None, params=None):
         """Perform a PUT request."""
@@ -164,72 +198,6 @@ class Client:
         """Perform a PATCH request."""
         return self._request("PATCH", path, data=data, params=params)
 
-    def delete(self, path, params=None):
+    def delete(self, path, data=None, params=None):
         """Perform a DELETE request."""
-        return self._request("DELETE", path, params=params)
-
-    def get_paginated(self, path, params=None, results_key=None):
-        """
-        Fetch all pages of a paginated list endpoint.
-
-        Supports common pagination patterns:
-        - next URL in response (``next``)
-        - page/offset based (``page``, ``offset``)
-
-        Returns the full list of items.
-        """
-        if params is None:
-            params = {}
-
-        all_items = []
-        current_path = path
-        current_params = dict(params)
-
-        while True:
-            response = self.get(current_path, params=current_params)
-
-            if isinstance(response, list):
-                all_items.extend(response)
-                break
-
-            # Extract items from the response
-            items = []
-            if results_key and results_key in response:
-                items = response[results_key]
-            else:
-                for key in ("results", "data", "items", "records"):
-                    if key in response:
-                        items = response[key]
-                        break
-
-            if isinstance(items, list):
-                all_items.extend(items)
-            else:
-                break
-
-            # Check for next page
-            next_url = response.get("next")
-            if next_url:
-                # next is a full URL — extract path and params
-                if next_url.startswith("http"):
-                    from ansible.module_utils.six.moves.urllib.parse import urlparse, parse_qs
-
-                    parsed = urlparse(next_url)
-                    current_path = parsed.path
-                    current_params = {k: v[0] for k, v in parse_qs(parsed.query).items()}
-                else:
-                    current_path = next_url
-                    current_params = {}
-                continue
-
-            # Check for page-based pagination
-            total = response.get("total", response.get("count", response.get("total_count")))
-            if total is not None and len(all_items) < total:
-                page = current_params.get("page", 1)
-                current_params["page"] = page + 1
-                continue
-
-            # No more pages
-            break
-
-        return all_items
+        return self._request("DELETE", path, data=data, params=params)

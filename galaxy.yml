@@ -1,11 +1,13 @@
 ---
 namespace: stevefulme1
 name: elastic
-version: 0.1.0
+version: 0.2.0
 readme: README.md
 authors:
-  - Auto-generated
-description: Ansible collection for managing the Elastic Stack — Elasticsearch, Kibana, Fleet, Security SIEM, and Event-Driven Ansible integration
+  - Steve Fulmer (@stevefulme1)
+description: >-
+  Ansible collection for managing the Elastic Stack — Elasticsearch, Kibana,
+  Fleet, Security SIEM, and Event-Driven Ansible integration.
 license:
   - GPL-3.0-or-later
 tags:
@@ -17,8 +19,11 @@ tags:
   - fleet
   - siem
   - eda
+dependencies: {}
 repository: https://github.com/stevefulme1/ansible-elastic
 build_ignore:
   - tests/output
   - .tox
   - .venv
+  - __pycache__
+  - "*.pyc"

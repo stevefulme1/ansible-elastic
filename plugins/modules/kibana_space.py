@@ -98,6 +98,9 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
     Client,
     ClientError,
     argument_spec as auth_argument_spec,
+    auth_mutually_exclusive,
+    auth_required_one_of,
+    auth_required_together,
 )
 
 
@@ -164,6 +167,9 @@ def main():
 
     module = AnsibleModule(
         argument_spec=spec,
+        mutually_exclusive=auth_mutually_exclusive(),
+        required_together=auth_required_together(),
+        required_one_of=auth_required_one_of(),
         supports_check_mode=True,
     )
 

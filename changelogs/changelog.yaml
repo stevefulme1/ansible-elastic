@@ -4,4 +4,32 @@ releases:
   0.1.0:
     release_date: "2026-05-20"
     changes:
-      release_summary: Initial pre-release with 10 Elasticsearch modules.
+      release_summary: >-
+        Initial pre-release with Elasticsearch core modules (component_template,
+        connector, data_stream, enrich_policy, index_template, ingest_pipeline,
+        logstash_pipeline, query_rule, synonym, transform) and their info
+        counterparts.
+  0.2.0:
+    release_date: "2026-07-27"
+    changes:
+      release_summary: >-
+        Major feature release with 48 new modules across Elasticsearch lifecycle,
+        watcher, security, Kibana, Fleet, and Security SIEM domains, plus 3 EDA
+        event source plugins. Core infrastructure rewrite with proper Elastic
+        Stack authentication (API key and basic auth), corrected API endpoints,
+        and CI pipeline hardening.
+      major_changes:
+        - >-
+          Rewrote API client authentication to use standard Elasticsearch
+          ``Authorization: ApiKey`` and ``Authorization: Basic`` headers
+          instead of incorrect ``X-API-Key`` header.
+        - Added basic auth support (``api_username``/``api_password``) alongside API key auth.
+        - Made ``api_url`` required with no default.
+      minor_changes:
+        - Added ``build`` job to CI to verify collection tarball builds cleanly.
+        - Removed ``|| true`` from unit test CI step so failures are caught.
+        - Fixed CONTRIBUTING.md bug report link to point to this repo.
+        - Fixed README authentication docs (``api_token`` corrected to ``api_key``).
+      bugfixes:
+        - Fixed ``X-API-Key`` authentication header — Elasticsearch uses ``Authorization: ApiKey``.
+        - Fixed ``api_url`` defaulting to empty string causing silent failures.

@@ -70,7 +70,7 @@ import hmac
 import json
 import logging
 import ssl as ssl_module
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from aiohttp import web
 

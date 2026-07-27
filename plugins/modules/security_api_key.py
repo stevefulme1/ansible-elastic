@@ -189,8 +189,11 @@ def main():
                         "/_security/api_key",
                         data=desired,
                     )
+                    api_key_value = response.get("api_key", "")
+                    if api_key_value:
+                        module.no_log_values.add(api_key_value)
                     result["id"] = response.get("id")
-                    result["api_key"] = response.get("api_key")
+                    result["api_key"] = api_key_value
                     result["name"] = response.get("name")
             else:
                 # API key already exists - no update possible

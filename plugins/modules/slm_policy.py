@@ -116,8 +116,10 @@ def get_current_state(client, module):
         if isinstance(response, dict) and policy_id in response:
             return response[policy_id]
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):

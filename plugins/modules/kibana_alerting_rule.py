@@ -156,7 +156,7 @@ def get_current_state(client, module):
         if name is None:
             return None
         try:
-            response = client.get("/api/alerting/rule/_find")
+            response = client.get("/api/alerting/rule/_find", params={"per_page": 1000})
             items = response.get("data", [])
             for item in items:
                 if item.get("name") == name:

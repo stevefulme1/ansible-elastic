@@ -96,8 +96,10 @@ def get_current_state(client, module):
             entry = response[policy_id]
             return entry.get("policy", entry)
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):

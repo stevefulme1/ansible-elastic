@@ -98,7 +98,7 @@ class TestGetCurrentState:
         from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
 
         mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("404 not found")
+        mock_client.get.side_effect = ClientError("404 not found", status_code=404)
 
         mock_module = MagicMock()
         mock_module.params = resource_args
@@ -114,7 +114,7 @@ class TestGetCurrentState:
         from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
 
         mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("resource not_found")
+        mock_client.get.side_effect = ClientError("resource not_found", status_code=404)
 
         mock_module = MagicMock()
         mock_module.params = resource_args
@@ -130,7 +130,7 @@ class TestGetCurrentState:
         from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client import ClientError
 
         mock_client = MagicMock()
-        mock_client.get.side_effect = ClientError("500 internal server error")
+        mock_client.get.side_effect = ClientError("500 internal server error", status_code=500)
 
         mock_module = MagicMock()
         mock_module.params = resource_args

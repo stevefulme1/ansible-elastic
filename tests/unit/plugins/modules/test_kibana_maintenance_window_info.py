@@ -78,7 +78,7 @@ class TestFetchSingle:
 
         result = kibana_maintenance_window_info.fetch_single(client, "mw-123")
 
-        client.get.assert_called_once_with("/internal/alerting/rules/maintenance_window/mw-123")
+        client.get.assert_called_once_with("/api/alerting/rules/maintenance_window/mw-123")
         assert result is not None
         assert result["id"] == "mw-123"
         assert result["title"] == "Planned Maintenance"
@@ -112,7 +112,7 @@ class TestFetchList:
 
         result = kibana_maintenance_window_info.fetch_list(client, module)
 
-        client.get.assert_called_once_with("/internal/alerting/rules/maintenance_window/_find", params={})
+        client.get.assert_called_once_with("/api/alerting/rules/maintenance_window/_find", params={})
         assert len(result) == 2
         assert result[0]["id"] == "mw-1"
         assert result[1]["id"] == "mw-2"
@@ -127,7 +127,7 @@ class TestFetchList:
         result = kibana_maintenance_window_info.fetch_list(client, module)
 
         client.get.assert_called_once_with(
-            "/internal/alerting/rules/maintenance_window/_find",
+            "/api/alerting/rules/maintenance_window/_find",
             params={"page": 2, "perPage": 10},
         )
         assert len(result) == 2

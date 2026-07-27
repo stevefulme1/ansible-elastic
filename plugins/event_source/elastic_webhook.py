@@ -79,7 +79,7 @@ logger = logging.getLogger("stevefulme1.elastic.elastic_webhook")
 
 def _verify_signature(body: bytes, signature: str, token: str) -> bool:
     """Verify HMAC-SHA256 signature of the request body."""
-    expected = hmac.new(
+    expected = hmac.HMAC(
         token.encode("utf-8"), body, hashlib.sha256
     ).hexdigest()
     return hmac.compare_digest(expected, signature)

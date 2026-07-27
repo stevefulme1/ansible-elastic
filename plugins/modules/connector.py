@@ -32,27 +32,27 @@ options:
     type: str
   description:
     description:
-      - >-
+      - The description of the connector.
     type: str
   index_name:
     description:
-      - >-
+      - The index name the connector writes data to.
     type: str
   is_native:
     description:
-      - >-
+      - Whether the connector is a native (Elastic-managed) connector.
     type: bool
   language:
     description:
-      - >-
+      - The language the connector uses, such as C(en) or C(fr).
     type: str
   name:
     description:
-      - >-
+      - The display name of the connector.
     type: str
   service_type:
     description:
-      - >-
+      - The third-party service type the connector integrates with.
     type: str
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
@@ -106,7 +106,7 @@ def get_current_state(client, module):
         try:
             return client.get("/_connector/{0}".format(connector_id))
         except ClientError as e:
-            if "404" in str(e) or "not_found" in str(e).lower():
+            if e.status_code == 404:
                 return None
             raise
 
@@ -125,7 +125,7 @@ def get_current_state(client, module):
                 return item
         return None
     except ClientError as e:
-        if "404" in str(e) or "not_found" in str(e).lower():
+        if e.status_code == 404:
             return None
         raise
 
@@ -246,10 +246,38 @@ def main():
 
                 if not module.check_mode:
                     identifier = module.params.get("connector_id") or current.get("id")
-                    response = client.put(
-                        "/_connector/{0}".format(identifier),
-                        data=desired,
-                    )
+                    response = {}
+                    # Use field-specific sub-APIs for connector updates
+                    if "name" in desired or "description" in desired:
+                        name_body = {}
+                        if "name" in desired:
+                            name_body["name"] = desired["name"]
+                        if "description" in desired:
+                            name_body["description"] = desired["description"]
+                        response = client.put(
+                            "/_connector/{0}/_name".format(identifier),
+                            data=name_body,
+                        )
+                    if "index_name" in desired:
+                        response = client.put(
+                            "/_connector/{0}/_index_name".format(identifier),
+                            data={"index_name": desired["index_name"]},
+                        )
+                    if "service_type" in desired:
+                        response = client.put(
+                            "/_connector/{0}/_service_type".format(identifier),
+                            data={"service_type": desired["service_type"]},
+                        )
+                    if "is_native" in desired:
+                        response = client.put(
+                            "/_connector/{0}/_native".format(identifier),
+                            data={"is_native": desired["is_native"]},
+                        )
+                    if "language" in desired:
+                        response = client.put(
+                            "/_connector/{0}/_configuration".format(identifier),
+                            data={"language": desired["language"]},
+                        )
                     result["api_response"] = response if isinstance(response, dict) else {}
 
             else:

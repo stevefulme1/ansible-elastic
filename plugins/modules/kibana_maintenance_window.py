@@ -121,7 +121,7 @@ def get_current_state(client, module):
     if identifier is None:
         return None
     try:
-        response = client.get("/internal/alerting/rules/maintenance_window/{0}".format(identifier))
+        response = client.get("/api/alerting/rules/maintenance_window/{0}".format(identifier))
         if isinstance(response, dict) and response.get("id"):
             return response
         return None
@@ -213,7 +213,7 @@ def main():
 
                 if not module.check_mode:
                     response = client.post(
-                        "/internal/alerting/rules/maintenance_window",
+                        "/api/alerting/rules/maintenance_window",
                         data=desired,
                     )
                     result["api_response"] = response if isinstance(response, dict) else {}
@@ -227,7 +227,7 @@ def main():
                 if not module.check_mode:
                     identifier = current.get("id")
                     response = client.post(
-                        "/internal/alerting/rules/maintenance_window/{0}".format(identifier),
+                        "/api/alerting/rules/maintenance_window/{0}".format(identifier),
                         data=desired,
                     )
                     result["api_response"] = response if isinstance(response, dict) else {}
@@ -244,7 +244,7 @@ def main():
 
                 if not module.check_mode:
                     identifier = current.get("id")
-                    client.delete("/internal/alerting/rules/maintenance_window/{0}".format(identifier))
+                    client.delete("/api/alerting/rules/maintenance_window/{0}".format(identifier))
 
     except ClientError as e:
         module.fail_json(msg=str(e), **result)

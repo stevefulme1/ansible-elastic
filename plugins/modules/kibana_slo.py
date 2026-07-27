@@ -151,7 +151,7 @@ def get_current_state(client, module):
         if name is None:
             return None
         try:
-            response = client.get("/api/observability/slos")
+            response = client.get("/api/observability/slos", params={"perPage": 1000})
             items = response.get("results", [])
             for item in items:
                 if item.get("name") == name:

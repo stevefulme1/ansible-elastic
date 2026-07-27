@@ -31,7 +31,7 @@ options:
     type: str
   _meta:
     description:
-      - >-
+      - Optional user metadata about the index template. May have any contents.
     type: dict
   allow_auto_create:
     description:
@@ -46,7 +46,7 @@ options:
     elements: str
   data_stream:
     description:
-      - >-
+      - If this object is included, the template is used to create data streams and their backing indices.
     type: dict
   deprecated:
     description:
@@ -61,7 +61,7 @@ options:
     elements: str
   index_patterns:
     description:
-      - >-
+      - Array of wildcard expressions used to match the names of data streams and indices during creation.
     type: list
     elements: str
   priority:
@@ -71,11 +71,11 @@ options:
     type: int
   template:
     description:
-      - >-
+      - Template to be applied, including settings, mappings, and aliases configuration.
     type: dict
   version:
     description:
-      - >-
+      - Version number used to manage index templates externally.
     type: int
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
@@ -134,10 +134,10 @@ def get_current_state(client, module):
         if isinstance(response, dict):
             templates = response.get("index_templates", [])
             if templates:
-                return templates[0]
+                return templates[0].get("index_template", templates[0])
         return response
     except ClientError as e:
-        if "404" in str(e) or "not_found" in str(e).lower():
+        if e.status_code == 404:
             return None
         raise
 

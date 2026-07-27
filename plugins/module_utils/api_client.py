@@ -124,6 +124,7 @@ class Client:
                     data=body,
                     validate_certs=self.validate_certs,
                     timeout=self.timeout,
+                    force_basic_auth=True,
                 )
                 response_body = response.read()
                 if response_body:

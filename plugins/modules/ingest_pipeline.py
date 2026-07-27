@@ -44,11 +44,6 @@ options:
     description:
       - Description of the ingest pipeline.
     type: str
-  field_access_pattern:
-    description:
-      - Field access pattern for the pipeline.
-    type: str
-    choices: ["classic", "flexible"]
   on_failure:
     description:
       - >-
@@ -165,9 +160,6 @@ def build_payload(module):
     if module.params.get("description") is not None:
         payload["description"] = module.params["description"]
 
-    if module.params.get("field_access_pattern") is not None:
-        payload["field_access_pattern"] = module.params["field_access_pattern"]
-
     if module.params.get("on_failure") is not None:
         payload["on_failure"] = module.params["on_failure"]
 
@@ -187,9 +179,8 @@ def main():
             id=dict(type="str"),
             state=dict(type="str", choices=["present", "absent"], default="present"),
             _meta=dict(type="dict"),
-            deprecated=dict(type="bool", default=False),
+            deprecated=dict(type="bool"),
             description=dict(type="str"),
-            field_access_pattern=dict(type="str", choices=["classic", "flexible"]),
             on_failure=dict(type="list", elements="dict"),
             processors=dict(type="list", elements="dict"),
             version=dict(type="int"),

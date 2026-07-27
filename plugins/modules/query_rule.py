@@ -87,7 +87,7 @@ def get_current_state(client, module):
     try:
         return client.get("/_query_rules/{0}".format(ruleset_id))
     except ClientError as e:
-        if "404" in str(e) or "not_found" in str(e).lower():
+        if e.status_code == 404:
             return None
         raise
 

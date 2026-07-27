@@ -10,10 +10,10 @@
 ## Reporting a Vulnerability
 
 If you discover a security vulnerability in this collection, please report it
-responsibly by opening a [GitHub Issue](https://github.com/stevefulme1/ansible-elastic/issues/new)
-with the label `security`, or contact the maintainer directly.
+responsibly using [GitHub's private vulnerability reporting](https://github.com/stevefulme1/ansible-elastic/security/advisories/new).
+This ensures the issue is handled privately until a fix is available.
 
-Please do **not** disclose security issues publicly until a fix is available.
+Please do **not** disclose security issues via public GitHub Issues.
 
 ## Scope
 

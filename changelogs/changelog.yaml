@@ -14,7 +14,7 @@ releases:
     changes:
       release_summary: >-
         Major feature release with 48 new modules across Elasticsearch lifecycle,
-        watcher, security, Kibana, Fleet, and Security SIEM domains, plus 3 EDA
+        watcher, security, Kibana, Fleet, and Security SIEM domains, plus 4 EDA
         event source plugins. Core infrastructure rewrite with proper Elastic
         Stack authentication (API key and basic auth), corrected API endpoints,
         and CI pipeline hardening.

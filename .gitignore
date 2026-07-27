@@ -1,8 +1,6 @@
 __pycache__/
 *.pyc
 .ansible/
-.ansible/
 tests/output/
 .test_namespace/
-elastic
 stevefulme1-elastic-*.tar.gz

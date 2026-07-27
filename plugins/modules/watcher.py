@@ -177,8 +177,10 @@ def get_current_state(client, module):
             watch["found"] = True
             return watch
         return None
-    except ClientError:
-        return None
+    except ClientError as e:
+        if e.status_code == 404:
+            return None
+        raise
 
 
 def needs_update(current, desired):
@@ -218,9 +220,6 @@ def build_payload(module):
 
     if module.params.get("metadata") is not None:
         payload["metadata"] = module.params["metadata"]
-
-    if module.params.get("active") is not None:
-        payload["active"] = module.params["active"]
 
     return payload
 
@@ -324,6 +323,18 @@ def main():
                 # Resource exists and is up-to-date
                 result["_id"] = current.get("_id")
                 result["_version"] = current.get("_version")
+
+            # Handle active/inactive state via dedicated endpoints
+            active_param = module.params.get("active")
+            if active_param is not None and not module.check_mode:
+                watch_id = module.params["watch_id"]
+                current_active = current.get("status", {}).get("state", {}).get("active") if current else None
+                if current_active is None or current_active != active_param:
+                    if active_param:
+                        client.put("/_watcher/watch/{0}/_activate".format(watch_id))
+                    else:
+                        client.put("/_watcher/watch/{0}/_deactivate".format(watch_id))
+                    result["changed"] = True
 
         elif state == "absent":
             if current is not None:

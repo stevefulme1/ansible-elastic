@@ -93,7 +93,7 @@ from ansible_collections.stevefulme1.elastic.plugins.module_utils.api_client imp
 def fetch_single(client, identifier):
     """Retrieve a single maintenance window by identifier."""
     try:
-        response = client.get("/internal/alerting/rules/maintenance_window/{0}".format(identifier))
+        response = client.get("/api/alerting/rules/maintenance_window/{0}".format(identifier))
         if isinstance(response, dict) and response.get("id"):
             return response
         return None
@@ -116,7 +116,7 @@ def fetch_list(client, module):
         params["perPage"] = page_size
 
     try:
-        response = client.get("/internal/alerting/rules/maintenance_window/_find", params=params)
+        response = client.get("/api/alerting/rules/maintenance_window/_find", params=params)
         if isinstance(response, dict):
             return response.get("data", [])
         return response if isinstance(response, list) else []

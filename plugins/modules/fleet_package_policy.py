@@ -194,7 +194,7 @@ def main():
         argument_spec=spec,
         mutually_exclusive=auth_mutually_exclusive(),
         required_together=auth_required_together(),
-        required_one_of=auth_required_one_of(),
+        required_one_of=auth_required_one_of() + [("package_policy_id", "name")],
         required_if=[
             ("state", "present", ("name",)),
         ],

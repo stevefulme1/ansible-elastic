@@ -21,7 +21,7 @@ class TestVerifySignature:
     def test_valid_signature(self):
         body = b'{"alert": "test"}'
         token = "my-secret"
-        sig = hmac.new(token.encode(), body, hashlib.sha256).hexdigest()
+        sig = hmac.HMAC(token.encode(), body, hashlib.sha256).hexdigest()
         assert _verify_signature(body, sig, token) is True
 
     def test_invalid_signature(self):
@@ -33,11 +33,11 @@ class TestVerifySignature:
         body = b'{"alert": "test"}'
         token = "my-secret"
         wrong_token = "wrong-secret"
-        sig = hmac.new(wrong_token.encode(), body, hashlib.sha256).hexdigest()
+        sig = hmac.HMAC(wrong_token.encode(), body, hashlib.sha256).hexdigest()
         assert _verify_signature(body, sig, token) is False
 
     def test_empty_body(self):
         body = b""
         token = "my-secret"
-        sig = hmac.new(token.encode(), body, hashlib.sha256).hexdigest()
+        sig = hmac.HMAC(token.encode(), body, hashlib.sha256).hexdigest()
         assert _verify_signature(body, sig, token) is True

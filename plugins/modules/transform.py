@@ -41,7 +41,7 @@ options:
     type: dict
   _meta:
     description:
-      - >-
+      - Optional metadata about the transform. May have any contents.
     type: dict
   description:
     description:
@@ -50,19 +50,19 @@ options:
     type: str
   frequency:
     description:
-      - >-
+      - The interval between checks for changes in the source indices. Defaults to C(1m).
     type: str
   latest:
     description:
-      - >-
+      - The latest function configuration for the transform. Mutually exclusive with C(pivot).
     type: dict
   pivot:
     description:
-      - >-
+      - The pivot function configuration defining group_by and aggregations. Mutually exclusive with C(latest).
     type: dict
   retention_policy:
     description:
-      - >-
+      - Defines a retention policy for the transform to delete old data from the destination index.
     type: dict
   settings:
     description:
@@ -71,7 +71,7 @@ options:
     type: dict
   sync:
     description:
-      - >-
+      - Defines the properties transforms require to run continuously (continuous transforms).
     type: dict
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
@@ -141,7 +141,7 @@ def get_current_state(client, module):
                 return transforms[0]
         return response
     except ClientError as e:
-        if "404" in str(e) or "not_found" in str(e).lower():
+        if e.status_code == 404:
             return None
         raise
 

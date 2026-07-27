@@ -1,0 +1,22 @@
+[allowlist]
+  description = "stevefulme1.elastic collection allowlist"
+
+  regexes = [
+    # Unit test fixture placeholder credentials (not real secrets)
+    '''test-api-key''',
+    '''test-key''',
+    '''test-api-url''',
+    '''changeme''',
+  ]
+
+  paths = [
+    # Built collection tarballs should never be committed but
+    # cover any accidental commits of build artifacts
+    '''stevefulme1-elastic-.*\.tar\.gz$''',
+
+    # Test fixtures contain placeholder credentials by design
+    '''tests\/unit\/''',
+
+    # EDA example rulebooks reference lookup-based secrets
+    '''docs\/eda\/''',
+  ]

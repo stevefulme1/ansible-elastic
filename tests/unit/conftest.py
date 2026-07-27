@@ -43,7 +43,7 @@ def module_args():
     """Return base module args shared by all modules."""
     return {
         "state": "present",
-        "api_key": "test-api-key",
+        "api_key": "test-api-key",  # notsecret
         "api_url": "https://api.example.com",
         "validate_certs": True,
         "request_timeout": 30,

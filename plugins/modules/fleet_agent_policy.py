@@ -33,14 +33,13 @@ options:
   name:
     description:
       - The display name for the agent policy.
-      - Required when creating an agent policy.
+      - Required when I(state=present).
     type: str
-    required: true
   namespace:
     description:
       - The namespace for the agent policy.
+      - When omitted on update, the existing namespace is preserved.
     type: str
-    default: default
   description:
     description:
       - A description of the agent policy.

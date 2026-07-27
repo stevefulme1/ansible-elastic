@@ -87,7 +87,6 @@ api_key:
     This value is sensitive and should be treated as a secret.
   returned: on create
   type: str
-  no_log: true
 name:
   description: The name of the API key.
   returned: on create

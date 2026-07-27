@@ -38,8 +38,8 @@ options:
   enabled:
     description:
       - Whether the role mapping is enabled.
+      - When omitted on update, the existing value is preserved.
     type: bool
-    default: true
   rules:
     description:
       - The rules that determine which users should be matched by the mapping.

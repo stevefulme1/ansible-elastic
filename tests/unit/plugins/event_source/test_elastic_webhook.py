@@ -9,9 +9,6 @@ __metaclass__ = type
 
 import hashlib
 import hmac
-import json
-
-import pytest
 
 from ansible_collections.stevefulme1.elastic.plugins.event_source.elastic_webhook import (
     _verify_signature,

@@ -66,8 +66,8 @@ options:
   active:
     description:
       - Whether the watch is active and should be evaluated on its trigger schedule.
+      - When omitted on update, the existing value is preserved.
     type: bool
-    default: true
 extends_documentation_fragment:
   - stevefulme1.elastic.auth
 """

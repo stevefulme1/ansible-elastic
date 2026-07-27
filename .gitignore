@@ -5,3 +5,4 @@ __pycache__/
 tests/output/
 .test_namespace/
 elastic
+stevefulme1-elastic-*.tar.gz

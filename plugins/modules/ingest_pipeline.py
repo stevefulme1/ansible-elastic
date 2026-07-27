@@ -38,8 +38,8 @@ options:
       - >-
         Marks this ingest pipeline as deprecated. When a deprecated ingest pipeline is referenced as the
         default pipeline or final pipeline, Elasticsearch emits a deprecation warning.
+      - When omitted, the existing value is preserved on update.
     type: bool
-    default: false
   description:
     description:
       - Description of the ingest pipeline.
